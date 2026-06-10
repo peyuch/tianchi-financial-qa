@@ -1,7 +1,8 @@
-"""Unified Qwen API client supporting 魔搭 (ModelScope) and 百炼 (DashScope)."""
+"""Qwen API client via 百炼 DashScope."""
 import os
 from dataclasses import dataclass
 from dashscope import Generation
+from dashscope.api_entities.dashscope_response import GenerationResponse
 
 
 @dataclass
@@ -29,15 +30,19 @@ class QwenClient:
         self.counter = TokenCounter()
 
     def chat(self, messages: list[dict], temperature: float = 0.1,
-             max_tokens: int = 4096) -> dict:
+             max_tokens: int = 4096, timeout: int = 120) -> dict:
         """Send chat request and return parsed response with token counts."""
-        response = Generation.call(
-            model=self.model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            api_key=self.api_key,
-        )
+        try:
+            response = Generation.call(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                api_key=self.api_key,
+                timeout=timeout,
+            )
+        except Exception as e:
+            raise RuntimeError(f"Qwen API call failed: {e}") from e
 
         if response.status_code != 200:
             raise RuntimeError(
