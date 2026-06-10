@@ -1,0 +1,210 @@
+
+=== INSURANCE ===
+Total files: 16 | Total pages: 299 | Total size: 7.1 MB
+Avg pages/file: 18.7 | Avg size/file: 455 KB
+  1.pdf: 809 KB, 21p
+  10.pdf: 246 KB, 14p
+  11.pdf: 126 KB, 7p
+  12.pdf: 224 KB, 11p
+  13.pdf: 150 KB, 8p
+  14.pdf: 107 KB, 7p
+  15.pdf: 470 KB, 8p
+  16.pdf: 441 KB, 13p
+  2.pdf: 356 KB, 12p
+  3.pdf: 269 KB, 17p
+  4.pdf: 1.0 MB, 33p
+  5.pdf: 1.1 MB, 45p
+  6.pdf: 788 KB, 42p
+  7.pdf: 118 KB, 8p
+  8.pdf: 447 KB, 39p
+  9.pdf: 552 KB, 14p
+
+=== FINANCIAL_CONTRACTS ===
+Total files: 14 | Total pages: 4324 | Total size: 105.6 MB
+Avg pages/file: 308.9 | Avg size/file: 7722 KB
+  text01.pdf: 7.5 MB, 311p
+  text02.pdf: 6.9 MB, 253p
+  text03.pdf: 12.8 MB, 261p
+  text04.pdf: 13.2 MB, 495p
+  text05.pdf: 5.9 MB, 386p
+  text06.pdf: 5.9 MB, 283p
+  text07.pdf: 1.5 MB, 262p
+  text08.pdf: 8.2 MB, 468p
+  text09.pdf: 7.7 MB, 281p
+  text10.pdf: 12.0 MB, 516p
+  text11.pdf: 8.1 MB, 273p
+  text12.pdf: 1.3 MB, 126p
+  text13.pdf: 7.9 MB, 166p
+  text14.pdf: 6.8 MB, 243p
+
+=== FINANCIAL_REPORTS ===
+Total files: 10 | Total pages: 2152 | Total size: 104.8 MB
+Avg pages/file: 215.2 | Avg size/file: 10736 KB
+  annual_byd_2024_report.PDF: 9.6 MB, 290p
+  annual_byd_2025_report.PDF: 7.2 MB, 268p
+  annual_catl_2024_report.PDF: 2.0 MB, 229p
+  annual_catl_2025_report.PDF: 1.9 MB, 232p
+  annual_chinamobile_2025_report.PDF: 3.0 MB, 214p
+  annual_cmb_2025_report.PDF: 30.6 MB, 348p
+  annual_cscec_2024_report.pdf: 17.5 MB, 0p
+  annual_cscec_2025_report.pdf: 20.9 MB, 0p
+  annual_midea_2024_report.PDF: 6.4 MB, 295p
+  annual_midea_2025_report.PDF: 5.7 MB, 276p
+
+=== RESEARCH ===
+Total files: 20 | Total pages: 775 | Total size: 53.4 MB
+Avg pages/file: 38.8 | Avg size/file: 2732 KB
+  pack2_text01.pdf: 2.5 MB, 26p
+  pack2_text02.pdf: 6.8 MB, 37p
+  pack2_text03.pdf: 2.7 MB, 36p
+  pack2_text04.pdf: 3.0 MB, 106p
+  pack2_text05.pdf: 1.7 MB, 34p
+  pack2_text06.pdf: 3.1 MB, 41p
+  pack2_text07.pdf: 2.4 MB, 59p
+  pack2_text08.pdf: 4.8 MB, 37p
+  pack2_text09.pdf: 3.3 MB, 37p
+  pack2_text10.pdf: 1.7 MB, 33p
+  pack2_text11.pdf: 2.6 MB, 35p
+  pack2_text12.pdf: 2.9 MB, 25p
+  pack2_text13.pdf: 1.5 MB, 20p
+  pack2_text14.pdf: 1.9 MB, 55p
+  pack2_text15.pdf: 1.2 MB, 43p
+  pack2_text16.pdf: 1.3 MB, 21p
+  pack2_text17.pdf: 881 KB, 20p
+  pack2_text18.pdf: 4.0 MB, 32p
+  pack2_text19.pdf: 3.2 MB, 23p
+  pack2_text20.pdf: 1.9 MB, 55p
+
+=== REGULATORY_ATTACHMENTS ===
+Total files: 130 | Total pages: 3354 | Total size: 58.8 MB
+Avg pages/file: 25.8 | Avg size/file: 463 KB
+  csrc_0001_att1.pdf: 200 KB, 16p
+  csrc_0001_att2.pdf: 137 KB, 4p
+  csrc_0002_att1.pdf: 553 KB, 13p
+  csrc_0002_att2.pdf: 404 KB, 3p
+  csrc_0003_att1.pdf: 327 KB, 7p
+  csrc_0003_att2.pdf: 343 KB, 6p
+  csrc_0004_att1.pdf: 183 KB, 14p
+  csrc_0005_att1.pdf: 699 KB, 39p
+  csrc_0005_att2.pdf: 170 KB, 4p
+  csrc_0006_att1.pdf: 218 KB, 18p
+  csrc_0006_att2.pdf: 137 KB, 3p
+  csrc_0007_att1.pdf: 567 KB, 24p
+  csrc_0007_att2.pdf: 328 KB, 3p
+  csrc_0008_att1.pdf: 2.3 MB, 394p
+  csrc_0008_att2.pdf: 90 KB, 3p
+  csrc_0009_att1.pdf: 297 KB, 21p
+  csrc_0009_att2.pdf: 140 KB, 4p
+  csrc_0010_att1.pdf: 202 KB, 8p
+  csrc_0010_att2.pdf: 196 KB, 5p
+  csrc_0011_att1.pdf: 180 KB, 9p
+  csrc_0011_att2.pdf: 211 KB, 6p
+  csrc_0012_att1.pdf: 375 KB, 16p
+  csrc_0012_att2.pdf: 222 KB, 3p
+  csrc_0013_att1.pdf: 206 KB, 10p
+  csrc_0013_att2.pdf: 69 KB, 2p
+  csrc_0014_att1.pdf: 166 KB, 5p
+  csrc_0014_att2.pdf: 219 KB, 4p
+  csrc_0015_att1.pdf: 78 KB, 3p
+  csrc_0016_att1.pdf: 177 KB, 10p
+  csrc_0016_att2.pdf: 207 KB, 4p
+  csrc_0017_att1.pdf: 845 KB, 21p
+  csrc_0017_att2.pdf: 493 KB, 44p
+  csrc_0018_att1.pdf: 156 KB, 10p
+  csrc_0018_att2.pdf: 96 KB, 1p
+  csrc_0019_att1.pdf: 181 KB, 2p
+  csrc_0019_att2.pdf: 210 KB, 2p
+  csrc_0020_att1.pdf: 128 KB, 8p
+  csrc_0020_att2.pdf: 127 KB, 4p
+  csrc_0021_att1.pdf: 157 KB, 5p
+  csrc_0021_att2.pdf: 202 KB, 3p
+  csrc_0022_att1.pdf: 215 KB, 8p
+  csrc_0023_att1.pdf: 302 KB, 25p
+  csrc_0023_att2.pdf: 133 KB, 5p
+  csrc_0024_att1.pdf: 754 KB, 151p
+  csrc_0024_att2.pdf: 736 KB, 55p
+  csrc_0024_att3.pdf: 289 KB, 20p
+  csrc_0025_att1.pdf: 199 KB, 21p
+  csrc_0025_att2.pdf: 161 KB, 3p
+  csrc_0026_att1.pdf: 207 KB, 6p
+  csrc_0026_att2.pdf: 170 KB, 3p
+  csrc_0027_att1.pdf: 299 KB, 32p
+  csrc_0027_att2.pdf: 219 KB, 4p
+  csrc_0029_att1.pdf: 204 KB, 9p
+  csrc_0029_att2.pdf: 239 KB, 5p
+  csrc_0030_att1.pdf: 186 KB, 4p
+  csrc_0030_att2.pdf: 172 KB, 2p
+  csrc_0031_att1.pdf: 167 KB, 9p
+  csrc_0031_att2.pdf: 156 KB, 4p
+  csrc_0032_att1.pdf: 2.4 MB, 279p
+  csrc_0033_att1.pdf: 142 KB, 5p
+  csrc_0033_att2.pdf: 147 KB, 3p
+  csrc_0034_att1.pdf: 288 KB, 16p
+  csrc_0034_att2.pdf: 85 KB, 2p
+  csrc_0035_att1.pdf: 565 KB, 72p
+  csrc_0035_att2.pdf: 161 KB, 3p
+  csrc_0036_att1.pdf: 37 KB, 1p
+  csrc_0036_att2.pdf: 16.3 MB, 871p
+  csrc_0036_att3.pdf: 117 KB, 1p
+  csrc_0036_att4.pdf: 116 KB, 4p
+  csrc_0037_att1.pdf: 411 KB, 32p
+  csrc_0037_att2.pdf: 198 KB, 3p
+  csrc_0038_att1.pdf: 475 KB, 59p
+  csrc_0038_att2.pdf: 1.0 MB, 5p
+  csrc_0039_att1.pdf: 189 KB, 6p
+  csrc_0039_att2.pdf: 230 KB, 5p
+  csrc_0040_att1.pdf: 109 KB, 2p
+  csrc_0040_att2.pdf: 175 KB, 3p
+  csrc_0041_att1.pdf: 229 KB, 14p
+  csrc_0041_att2.pdf: 208 KB, 10p
+  csrc_0041_att3.pdf: 2.5 MB, 21p
+  csrc_0041_att4.pdf: 2.5 MB, 42p
+  csrc_0041_att5.pdf: 246 KB, 15p
+  csrc_0042_att1.pdf: 167 KB, 10p
+  csrc_0042_att2.pdf: 80 KB, 2p
+  csrc_0043_att1.pdf: 530 KB, 48p
+  csrc_0043_att2.pdf: 793 KB, 20p
+  csrc_0043_att3.pdf: 859 KB, 139p
+  csrc_0043_att4.pdf: 268 KB, 13p
+  csrc_0043_att5.pdf: 693 KB, 32p
+  csrc_0045_att1.pdf: 161 KB, 7p
+  csrc_0045_att2.pdf: 149 KB, 3p
+  csrc_0046_att1.pdf: 350 KB, 22p
+  csrc_0046_att2.pdf: 138 KB, 4p
+  csrc_0047_att1.pdf: 241 KB, 11p
+  csrc_0048_att1.pdf: 148 KB, 4p
+  csrc_0048_att2.pdf: 120 KB, 2p
+  csrc_0049_att1.pdf: 148 KB, 6p
+  csrc_0049_att2.pdf: 213 KB, 3p
+  csrc_0050_att1.pdf: 244 KB, 7p
+  csrc_0050_att2.pdf: 263 KB, 3p
+  csrc_0051_att1.pdf: 215 KB, 10p
+  csrc_0051_att2.pdf: 195 KB, 5p
+  csrc_0052_att1.pdf: 624 KB, 14p
+  csrc_0052_att2.pdf: 191 KB, 4p
+  csrc_0053_att1.pdf: 150 KB, 3p
+  csrc_0053_att2.pdf: 110 KB, 2p
+  csrc_0054_att1.pdf: 166 KB, 8p
+  csrc_0054_att2.pdf: 131 KB, 2p
+  csrc_0055_att1.pdf: 1.9 MB, 35p
+  csrc_0055_att2.pdf: 806 KB, 122p
+  csrc_0055_att3.pdf: 676 KB, 131p
+  csrc_0056_att1.pdf: 196 KB, 6p
+  csrc_0056_att2.pdf: 155 KB, 3p
+  csrc_0057_att1.pdf: 339 KB, 11p
+  csrc_0057_att2.pdf: 175 KB, 2p
+  csrc_0058_att1.pdf: 202 KB, 10p
+  csrc_0058_att2.pdf: 146 KB, 2p
+  csrc_0059_att1.pdf: 125 KB, 5p
+  csrc_0060_att1.pdf: 201 KB, 9p
+  csrc_0060_att2.pdf: 127 KB, 2p
+  csrc_0061_att1.pdf: 208 KB, 9p
+  csrc_0061_att2.pdf: 90 KB, 2p
+  csrc_0062_att1.pdf: 121 KB, 2p
+  csrc_0063_att1.pdf: 85 KB, 1p
+  csrc_0064_att1.pdf: 110 KB, 1p
+  csrc_0065_att1.pdf: 84 KB, 1p
+  csrc_0066_att1.pdf: 160 KB, 4p
+  csrc_0067_att1.pdf: 87 KB, 1p
+  csrc_0068_att1.pdf: 173 KB, 8p
+  csrc_0068_att2.pdf: 174 KB, 2p

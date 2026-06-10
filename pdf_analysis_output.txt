@@ -1,0 +1,215 @@
+LABEL: INSURANCE
+FILE: 1.pdf
+SIZE_KB: 809
+PAGES: 21
+HAS_TEXT: True
+TABLES: general=False, cn=True
+STRUCTURE: chapter_cn=False, section_cn=False, article_cn=False, chapter_en=False, section_en=False, numbered=True
+TOC: True
+TYPE_HINTS: standard=True, prospectus=False, contract=True, report=True, research=True
+TEXT_PREVIEW: 平安人寿〔2025〕年金保险 179 号 平安智盈金生专属商业养老保险 阅读指引 请扫描以查询验证条款 平安智盈金生专属商业养老保险产品提供养老、身故及失能失智护理保障 为了帮助您更好地了解产品，我们先介绍几个保险条款中常用的术语  被保险人就是受保险合同保障的人。  投保人就是购买保险并交纳保险费的人。  受益人就是发生保险事故后享有保险金请求权的人。  保险人就是保险公司。  保单账户价值等于您所持有的各投资组合账户价值之和。  投资组合账户价值随着扣除初始费用后的保险费、投资组合账户利息计入投资组合账户、投资 组合账户转换而变化。  趸交保险费指投保时您一次性支付的保险费。  期交保险费指投保人每一期支付的保险费。  追加保险费指养老保险金开始领取日前您随时支付的保险费。  初始费用就是保险公司从保险费中扣除的用于支付公司各项运营成本的费用。 与您有重大利害
+---END---
+
+LABEL: INSURANCE
+FILE: 5.pdf
+SIZE_KB: 1130
+PAGES: 45
+HAS_TEXT: True
+TABLES: general=False, cn=True
+STRUCTURE: chapter_cn=False, section_cn=False, article_cn=False, chapter_en=False, section_en=False, numbered=True
+TOC: True
+TYPE_HINTS: standard=False, prospectus=False, contract=True, report=False, research=False
+TEXT_PREVIEW: 平安健康〔2025〕医疗保险 080 号 阅读指引 请扫描以查询验证条款 本．阅．读．指．引．有．助．于．您．理．解．条．款．，对．“．平．安．e．生．保．住．院．7．.．0．医．疗．保．险．A．款．”．内．容．的．解．释．以．条．款．为．准．。 您拥有的重要权益  签收本主险合同后15日内您可以要求全额退还保险费…………………………………………………1.6  被保险人可以享受本主险合同提供的保障……………………………………………………………………2.2   您有退保的权利………………………………………………………………………………………………………………7.1 您应当特别注意的事项  我们对需要您仔细阅读的条款作了特别提示，详见条款正文中背景突出显示的内容 …………………………………………………………………………………..2.2、3.1、3.2、6.2、8.1、8.2、脚注 
+---END---
+
+LABEL: INSURANCE
+FILE: 16.pdf
+SIZE_KB: 441
+PAGES: 13
+HAS_TEXT: True
+TABLES: general=False, cn=False
+STRUCTURE: chapter_cn=True, section_cn=False, article_cn=False, chapter_en=False, section_en=False, numbered=False
+TOC: True
+TYPE_HINTS: standard=False, prospectus=False, contract=True, report=True, research=False
+TEXT_PREVIEW: 平安养老[2026]养老年金保险 001 号 请扫描以查询验证条款 平安富鸿金生（悦享版）养老年金保险（分红型）条款 提示 1：条款正文中加粗显示的文字内容为免除本公司保险责任的条款或其他重点注意事项，请您注 意仔细阅读。 提示 2：本条款中，“您”指投保人，“我们”、“本公司”均指平安养老保险股份有限公司。 目录 第一章 您与我们的合同 ..................................................................................................................................4 1.1 保险合同的构成 .....................................................................................
+---END---
+
+LABEL: INSURANCE
+FILE: 10.pdf
+SIZE_KB: 246
+PAGES: 14
+HAS_TEXT: True
+TABLES: general=False, cn=False
+STRUCTURE: chapter_cn=True, section_cn=False, article_cn=True, chapter_en=False, section_en=False, numbered=False
+TOC: False
+TYPE_HINTS: standard=False, prospectus=False, contract=True, report=False, research=False
+TEXT_PREVIEW: 众安在线财产保险股份有限公司特种车商业保险示范条款（2020版） 总则 第一条本保险条款分为主险、附加险。 主险包括特种车损失保险、特种车第三者责任保险、特种车车上人员责任保险、特种车 全车盗抢保险共四个独立的险种，投保人可以选择投保全部险种，也可以选择投保其中部分 险种。保险人依照本保险合同的约定，按照承保险种分别承担保险责任。 附加险不能独立投保。附加险条款与主险条款相抵触的，以附加险条款为准，附加险条 款未尽之处，以主险条款为准。 第二条本保险合同中的特种车是指在中华人民共和国境内（不含港、澳、台地区）行驶， 用于清障、清扫、起重、装卸、升降、搅拌、挖掘、推土、压路等的各种轮式或履带式专用 机动车，或车内装有固定专用仪器设备，从事专业工作的监测、消防、清洁、医疗、电视转 播、雷达、x光检查等机动车，或油罐车、汽罐车、液罐车、冷藏车、集装箱拖头以及约定 的其他机动车（以下简称被保险机动
+---END---
+
+LABEL: CONTRACT
+FILE: text01.pdf
+SIZE_KB: 7639
+PAGES: 311
+HAS_TEXT: True
+TABLES: general=False, cn=False
+STRUCTURE: chapter_cn=False, section_cn=True, article_cn=True, chapter_en=False, section_en=False, numbered=False
+TOC: True
+TYPE_HINTS: standard=False, prospectus=True, contract=True, report=True, research=True
+TEXT_PREVIEW: 广东省广晟控股集团有限公司 （住所：广东省广州市天河区珠江西路 17 号广晟国际大厦 50-58 楼） 2026 年面向专业投资者公开发行 科技创新公司债券（第一期） 募集说明书 本期债券发行金额 增信情况 发行人 主体信用评级/债项信用评级 不超过 10 亿元（含 10 亿元） 无增信 广东省广晟控股集团有限公司 AAA/- 牵头主承销商/受托管理人/簿记管理人 （住所：广东省深圳市福田区中心三路 8 号卓越时代广场（二期）北座） 联席主承销商 （住所：深圳市前海深港合作区南 山街道桂湾五路 128 号前海深港 基金小镇 B7 栋 401） （住所：广州市天河区珠江东路 11 号 18、19 楼全层） （住所：北京市朝阳区安立路 66 号 4 号楼） （住所：中国（上海）自由贸易试 验区商城路 618 号） （住所：广东省广州市黄埔区中 新广州知识城腾飞一街 2 号 618 室） （住所
+---END---
+
+LABEL: CONTRACT
+FILE: text03.pdf
+SIZE_KB: 13129
+PAGES: 261
+HAS_TEXT: True
+TABLES: general=False, cn=False
+STRUCTURE: chapter_cn=False, section_cn=True, article_cn=True, chapter_en=False, section_en=False, numbered=False
+TOC: True
+TYPE_HINTS: standard=False, prospectus=True, contract=True, report=True, research=True
+TEXT_PREVIEW: 4 16 厦门金圆投资集团有限公司2026年面向专业投资者公开发行公司债券（第二期）募集说明书 声明 发行人将及时、公平地履行信息披露义务。 发行人及其董事、高级管理人员或履行同等职责的人员保证募集说明书信 息披露的真实、准确、完整，不存在虚假记载、误导性陈述或重大遗漏。 主承销商已对募集说明书进行了核查，确认不存在虚假记载、误导性陈述 和重大遗漏，并对其真实性、准确性和完整性承担相应的法律责任。 发行人承诺合规发行，不从事《关于进一步规范债券发行业务有关事项的 通知》第三条第二款规定的行为。发行人承诺在本期债券发行环节，不直接或 者间接认购自己发行的债券。债券发行的利率或者价格应当以询价、协议定价 等方式确定，发行人不会操纵发行定价、暗箱操作，不以代持、信托等方式谋 取不正当利益或向其他相关利益主体输送利益，不直接或通过其他利益相关方 向参与认购的投资者提供财务资助、变相返费，不出于利益
+---END---
+
+LABEL: CONTRACT
+FILE: text07.pdf
+SIZE_KB: 1512
+PAGES: 262
+HAS_TEXT: True
+TABLES: general=False, cn=False
+STRUCTURE: chapter_cn=False, section_cn=True, article_cn=True, chapter_en=False, section_en=False, numbered=False
+TOC: True
+TYPE_HINTS: standard=False, prospectus=False, contract=True, report=True, research=True
+TEXT_PREVIEW: 股票代码：002320 证券简称：海峡股份 上市地点：深圳证券交易所 海南海峡航运股份有限公司 出资组建合资公司重大资产重组报告书 （草案） 交易对方 广东徐闻海峡航运有限公司 住所、通讯地址 徐闻县海安镇海安大道 独立财务顾问 二〇二一年九月 释义 在本重组报告书中，除非上下文另有所指，下列简称具有如下含义： 海峡股份/公司/上市公 指 海南海峡航运股份有限公司 司 交易对方/徐闻海峡 指 广东徐闻海峡航运有限公司，本次交易对方 海南中远海运 指 海南中远海运投资有限公司 中远海运香港 指 中远海运（香港）有限公司 中远海运集团 指 中国远洋海运集团有限公司 国务院国资委 指 国务院国有资产监督管理委员会 广东省国资委 指 广东省国有资产监督管理委员会 海南省国资委 指 海南省国有资产监督管理委员会 广东省港航集团 指 广东省港航集团有限公司 海口市国资委 指 海口市国有资产监督管理委员
+---END---
+
+LABEL: CONTRACT
+FILE: text14.pdf
+SIZE_KB: 6952
+PAGES: 243
+HAS_TEXT: True
+TABLES: general=False, cn=False
+STRUCTURE: chapter_cn=False, section_cn=True, article_cn=True, chapter_en=False, section_en=False, numbered=False
+TOC: True
+TYPE_HINTS: standard=False, prospectus=True, contract=True, report=True, research=True
+TEXT_PREVIEW: 西部证券股份有限公司面向专业投资者公开发行公司债券募集说明书 （住所：陕西省西安市新城区东新街 319 号 8 幢 10000 室） （股票简称：西部证券；股票代码：002673） 西部证券股份有限公司 2026 年面向专业投资者公开发行 公司债券（第二期）募集说明书 注册金额 不超过（含）180 亿元 本期发行金额 不超过（含）20 亿元 担保情况 无担保 信用评级结果 主体评级：AAA；评级展望：稳定 债项评级：AAA 发行人 西部证券股份有限公司 主承销商/簿记管理人/债券受托管理人 国元证券股份有限公司 资信评级机构 联合资信评估股份有限公司 主承销商/受托管理人/簿记管理人 签署日期： 年 月 日 西部证券股份有限公司面向专业投资者公开发行公司债券募集说明书 声明 本募集说明书依据《中华人民共和国公司法》《中华人民共和国证券法》《公司债券 发行与交易管理办法》（2023 年修订）
+---END---
+
+LABEL: REPORT
+FILE: annual_catl_2024_report.PDF
+SIZE_KB: 2022
+PAGES: 229
+HAS_TEXT: True
+TABLES: general=False, cn=False
+STRUCTURE: chapter_cn=False, section_cn=True, article_cn=False, chapter_en=False, section_en=False, numbered=False
+TOC: True
+TYPE_HINTS: standard=True, prospectus=False, contract=True, report=True, research=True
+TEXT_PREVIEW: 宁德时代新能源科技股份有限公司 2024 年年度报告 2025 年 03 月 宁德时代新能源科技股份有限公司 2024 年年度报告全文 第一节 重要提示、目录和释义 一、董事、监事、高级管理人员是否存在对年度报告内容存在异议或无法保证其真实、准 确、完整的情况 □是 否 公司董事会、监事会及董事、监事、高级管理人员保证年度报告内容的真实、准确、完整，不存在 虚假记载、误导性陈述或者重大遗漏，并承担个别和连带的法律责任。 公司负责人曾毓群先生、主管会计工作负责人及会计机构负责人郑舒先生声明：保证本年度报告中 财务报告的真实、准确、完整。 所有董事均已出席了审议本报告的董事会会议。 二、非标准审计意见提示 □适用 不适用 三、内部控制重大缺陷提示 □适用 不适用 四、业绩大幅下滑或亏损的风险提示 □适用 不适用 五、对年度报告涉及未来计划等前瞻性陈述的风险提示 适用 □不适用 本报告
+---END---
+
+LABEL: REPORT
+FILE: annual_byd_2024_report.PDF
+SIZE_KB: 9856
+PAGES: 290
+HAS_TEXT: True
+TABLES: general=False, cn=False
+STRUCTURE: chapter_cn=False, section_cn=True, article_cn=False, chapter_en=False, section_en=False, numbered=True
+TOC: True
+TYPE_HINTS: standard=False, prospectus=False, contract=False, report=True, research=True
+TEXT_PREVIEW: 比亚迪股份有限公司 2024 年年度报告全文 比亚迪股份有限公司 2024 年年度报告 2025 年 3 月 董事长致辞 比亚迪股份有限公司 2024 年年度报告全文 致尊敬的各位股东： 本人欣然向股东呈报我们截至二零二四年十二月三十一日止年度的报告。 1. 行业分析及回顾 二零二四年，全球经济呈现缓慢复苏态势，但保护主义上升给国际贸易增添诸多不确定性。国内经济平稳增长， 全年国内生产总值顺利实现同比增长 5.0%，以新质生产力为代表的新经济蓬勃发展，但国内有效需求不足，新旧动 能转换给各行各业的发展带来一定挑战。 年内，作为中国国民经济的战略性支柱产业，中国汽车产业发挥重要作用，韧性和活力彰显。全年中国汽车销 量达到 3,143.6 万辆，同比增长 4.5%，连续十六年稳居全球第一。中国新能源汽车全年销量达到 1,286.6 万辆，同比 大幅增长 35.5%，连续十年位居全球第一。新能源
+---END---
+
+LABEL: REPORT
+FILE: annual_chinamobile_2025_report.PDF
+SIZE_KB: 3085
+PAGES: 214
+HAS_TEXT: True
+TABLES: general=False, cn=False
+STRUCTURE: chapter_cn=False, section_cn=False, article_cn=False, chapter_en=False, section_en=False, numbered=False
+TOC: True
+TYPE_HINTS: standard=False, prospectus=False, contract=False, report=True, research=True
+TEXT_PREVIEW: 2025 年年度报告 公司简称：中国移动 股票代码：600941 中国移动有限公司 2025年年度报告 0 2025 年年度报告 重要提示 中国移动有限公司（“本公司”或“公司”）董事会及董事、高级管理人员保证年度报 告内容的真实性、准确性、完整性，不存在虚假记载、误导性陈述或重大遗漏，并承担个别 和连带的法律责任。 本年度报告已经公司 2026 年第一次董事会审议通过。本次会议应出席董事 7 名，实际 出席董事 7 名。 本公司分别按照中国企业会计准则及国际财务报告会计准则/香港财务报告会计准则编 制财务报告。本公司按中国企业会计准则及国际财务报告会计准则/香港财务报告会计准则 编制的 2025 年度财务报告已分别经毕马威华振会计师事务所（特殊普通合伙）及毕马威会 计师事务所审计并出具标准无保留意见的审计报告。 公司负责人陈忠岳、主管会计工作负责人李荣华及会计机构负责人（会计主管人员）胡
+---END---
+
+LABEL: RESEARCH
+FILE: pack2_text01.pdf
+SIZE_KB: 2579
+PAGES: 26
+HAS_TEXT: True
+TABLES: general=True, cn=True
+STRUCTURE: chapter_cn=False, section_cn=False, article_cn=False, chapter_en=False, section_en=False, numbered=True
+TOC: True
+TYPE_HINTS: standard=False, prospectus=False, contract=True, report=True, research=True
+TEXT_PREVIEW: 股 票 研 究 以海外银保为鉴，观我国寿险发展新格局 股票研究 /[T2a0b2le6_D.0a4te.]14 [Table_Indu保str险y]  行业深度报告 [评Tab级le_：Invest] 增持 姓[ta名ble_Authors] 电话 邮箱 登记编号 刘欣琦(分析师) 021-38676647 liuxinqi@gtht.com S0880515050001 唐关勇(分析师) 021-38031032 tangguanyong@gtht.com S0880526030006 李嘉木(分析师) 021-38038619 lijiamu@gtht.com S0880524030003 [相Ta关ble报_R告eport] 本报告导读： 保险《资负联动是经营关键，保险加服务成重 行 业 以海外为鉴，我国银保渠道有望成为居民存款迁移的核心载体，而头部险企有望发 挥综合优势转型银保合
+---END---
+
+LABEL: RESEARCH
+FILE: pack2_text10.pdf
+SIZE_KB: 1772
+PAGES: 33
+HAS_TEXT: True
+TABLES: general=False, cn=True
+STRUCTURE: chapter_cn=False, section_cn=False, article_cn=False, chapter_en=False, section_en=False, numbered=True
+TOC: True
+TYPE_HINTS: standard=False, prospectus=False, contract=True, report=True, research=True
+TEXT_PREVIEW: / / 行 非银金融行业深度研究 业 研 究 ROE 提升有道（一）—— 非 扩表：券商加杠杆路径探析 银 金 融 2026 年 04 月 21 日 证 券 研 究 报 【投资要点】 告 挖掘价值 投资成长 强于大市（维持） 东方财富证券研究所 证券分析师：王舫朝 证书编号：S1160524090005 联系人：汪筠婷 联系人：孙心睿  杠杆已成为 ROE 提升的关键变量。2008 年至 2025Q1-3 我国上市券 商除客户资金杠杆从 1.56 倍稳步提升至 4.09 倍，而同期自有资产净 利率由 4.3%降至 1.8%。在 ROA 受制于佣金率下行、费率承压的长 期背景下，杠杆变动对 ROE 的解释力度已超越 ROA，成为边际上的 决定性变量。  加杠杆是服务实体、培育一流投行的战略要求。2024 年风控指标修订 及后续监管表态标志着监管态度从“统一约束”向“分类引导”的实 质性转
+---END---
+
+LABEL: RESEARCH
+FILE: pack2_text20.pdf
+SIZE_KB: 1934
+PAGES: 55
+HAS_TEXT: True
+TABLES: general=False, cn=False
+STRUCTURE: chapter_cn=False, section_cn=False, article_cn=False, chapter_en=False, section_en=False, numbered=False
+TOC: True
+TYPE_HINTS: standard=False, prospectus=False, contract=False, report=True, research=True
+TEXT_PREVIEW: 证券研究报告 | 22002266年年40月4月181日7日 “资产荒”的新叙事 ——2025年财报里的金融机构配置线索 行业研究 · 深度报告 金融 投资评级：无评级 证券分析师：王剑 证券分析师：孔祥 证券分析师：陈俊良 证券分析师：田维韦 证券分析师：王德坤 证券分析师：王京灵 021-60875165 wangjian@guosen.co m.cn S0980518070002 021-60375452 kongxiang@guosen.c om.cn S0980523060004 021-60875161 chenjunliang@guose n.com.cn S0980519010001 021-60875161 021-61761035 0755-22941150 tianweiwei@guosen. wangdekun@guosen.com wangjingling@guo
+---END---
+
+LABEL: REG_ATT
+FILE: csrc_0008_att1.pdf
+SIZE_KB: 2368
+PAGES: 394
+HAS_TEXT: True
+TABLES: general=False, cn=False
+STRUCTURE: chapter_cn=True, section_cn=True, article_cn=True, chapter_en=False, section_en=False, numbered=False
+TOC: False
+TYPE_HINTS: standard=False, prospectus=True, contract=False, report=False, research=True
+TEXT_PREVIEW: 关于修改部分证券期货规章的决定 为做好新修订的《公司法》的贯彻落实工作，中国证监会对有 关规章制度进行了清理，决定对 21 部规章的部分条款予以修改。 一、删去《上市公司证券发行注册管理办法》第五条、第九条、 第十条、第十一条、第二十三条、第四十四条、第七十二条、第七 十三条、第八十二条中的“监事”。 第十条、第十一条、第十六条、第十八条、第十九条、第二十 条、第二十一条、第四十一条、第四十二条、第五十三条、第五十 五条、第五十七条、第六十条、第七十九条中的“股东大会”修改为“股 东会”。 第六十六条修改为：“向特定对象发行证券，上市公司及其控股 股东、实际控制人、主要股东不得通过向发行对象做出保底保收益 或者变相保底保收益承诺、直接或者通过利益相关方向发行对象提 供财务资助或者其他补偿等方式损害公司利益。” 删去第八十八条。 二、将《非上市公众公司收购管理办法》第六条第二款第四项 中的“
+---END---
+
+LABEL: REG_ATT
+FILE: csrc_0041_att1.pdf
+SIZE_KB: 229
+PAGES: 14
+HAS_TEXT: True
+TABLES: general=False, cn=False
+STRUCTURE: chapter_cn=False, section_cn=False, article_cn=False, chapter_en=False, section_en=False, numbered=True
+TOC: True
+TYPE_HINTS: standard=True, prospectus=False, contract=True, report=False, research=True
+TEXT_PREVIEW: ICS 03.060 CCS A11 JR 中华人民共和国金融行业标准 JR/T 0100—2024 期货经纪合同要素 The elements of futures brokerage contract 2024-12-24 发布 2024-12-24 实施 中国证券监督管理委员会 发 布 JR/T 0100—2024 目次 前言 .................................................................................. II 引言 ................................................................................. III 1 范围 ....................................................
+---END---
+
+LABEL: REG_ATT
+FILE: csrc_0036_att1.pdf
+SIZE_KB: 37
+PAGES: 1
+HAS_TEXT: True
+TABLES: general=False, cn=False
+STRUCTURE: chapter_cn=False, section_cn=False, article_cn=False, chapter_en=False, section_en=False, numbered=False
+TOC: False
+TYPE_HINTS: standard=False, prospectus=False, contract=False, report=False, research=True
+TEXT_PREVIEW: 关于修改、废止部分证券期货规范性文件的决定 为做好新修订的《公司法》的贯彻落实工作，中国证监会对 有关证券期货规范性文件进行了清理。经过清理，中国证监会决 定： 一、对 65 部规范性文件的部分条款予以修改。（附件 1） 二、对 2 部规范性文件予以废止。（附件 2） 本决定自公布之日起施行。 附件：1.中国证监会决定修改的规范性文件 2.中国证监会决定废止的规范性文件 
+---END---
+
+LABEL: REG_ATT
+FILE: csrc_0068_att2.pdf
+SIZE_KB: 174
+PAGES: 2
+HAS_TEXT: True
+TABLES: general=False, cn=False
+STRUCTURE: chapter_cn=False, section_cn=False, article_cn=False, chapter_en=False, section_en=False, numbered=False
+TOC: False
+TYPE_HINTS: standard=False, prospectus=False, contract=False, report=False, research=False
+TEXT_PREVIEW: 关于《监管规则适用指引——会计类第 4 号》 的说明 为进一步完善资本市场监管规则体系，提高监管透明度，推 动经营主体提升会计信息披露质量，我会对近期市场反映较为集 中的会计问题进行梳理，研究起草了《监管规则适用指引——会 计类第 4 号》（下称《会计类第 4 号》）。现将相关情况说明如下： 一、起草背景 会计信息是资本市场关键的基础性信息，督促经营主体真 实、准确、及时、完整地披露信息，尤其是披露具有可靠性、相 关性、可理解性等高质量特征的会计信息，是建设中国特色现代 资本市场的重要内容。促进各类经营主体一致有效地执行会计准 则，是提升会计信息披露质量的关键环节。近年来资本市场新业 务新模式不断涌现，对经营主体正确理解并一致有效执行会计准 则提出了挑战。为进一步指导市场实践，完善资本市场监管规则 体系，提升资本市场会计信息披露质量，我会及时收集整理了近 期市场较具普遍性和代表性的会计问题
+---END---
