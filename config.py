@@ -8,8 +8,8 @@ INDEX_DIR = os.path.join(os.path.dirname(__file__), "data", "indexes")
 SUMMARIES_DIR = os.path.join(os.path.dirname(__file__), "data", "summaries")
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
 
-# 赛题基准模型: Qwen3.6-plus，全流程统一使用
-QWEN_MODEL = os.environ.get("QWEN_MODEL", "qwen3.6-plus")
+# 赛题基准模型: Qwen3.6-plus (DashScope上模型ID为 qwen-plus)
+QWEN_MODEL = os.environ.get("QWEN_MODEL", "qwen-plus")
 QWEN_BASE_URL = os.environ.get("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
 
 # Domain configuration

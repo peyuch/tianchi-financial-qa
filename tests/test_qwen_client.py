@@ -11,7 +11,7 @@ def test_client_initializes_with_config(monkeypatch):
     monkeypatch.setenv("DASHSCOPE_API_KEY", "test-key")
     from agent.qwen_client import QwenClient
     client = QwenClient()
-    assert client.model == "qwen3.6-plus"
+    assert client.model == "qwen-plus"
     assert client.api_key == "test-key"
 
 
