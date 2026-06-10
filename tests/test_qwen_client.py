@@ -11,7 +11,7 @@ def test_client_initializes_with_config(monkeypatch):
     monkeypatch.setenv("DASHSCOPE_API_KEY", "test-key")
     from agent.qwen_client import QwenClient
     client = QwenClient()
-    assert client.model == "qwen-plus"
+    assert client.model == "qwen3.6-plus"
     assert client.api_key == "test-key"
 
 
@@ -22,13 +22,14 @@ def test_chat_returns_response_structure():
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.output = MagicMock()
+    # MultiModalConversation format: content is a list of {"text": "..."}
     mock_response.output.choices = [
-        MagicMock(message=MagicMock(content='{"answer": "A"}'))
+        MagicMock(message=MagicMock(content=[{"text": '{"answer": "A"}'}]))
     ]
     mock_response.usage = MagicMock()
     mock_response.usage.input_tokens = 100
     mock_response.usage.output_tokens = 50
-    with patch("dashscope.Generation.call", return_value=mock_response):
+    with patch("dashscope.MultiModalConversation.call", return_value=mock_response):
         result = client.chat(
             messages=[{"role": "user", "content": "test"}],
             temperature=0.1

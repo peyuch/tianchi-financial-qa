@@ -1,32 +1,8 @@
-"""Qwen API client via 百炼 DashScope."""
+"""Qwen API client — supports 百炼 (DashScope) and 魔搭 (ModelScope) backends.
+Set QWEN_BACKEND env var to "modelscope" or "dashscope" (default: dashscope).
+"""
 import os
 from dataclasses import dataclass
-from dashscope import Generation
-
-
-def _extract_content(response) -> str:
-    """Extract content from response, handling both old and new SDK formats."""
-    output = response.output
-    # New format: output is a dict with "text" key
-    if isinstance(output, dict):
-        return output.get("text", "") or ""
-    # Old format: output.choices[0].message.content
-    if hasattr(output, "choices") and output.choices:
-        return output.choices[0].message.content
-    # Try .text attribute
-    if hasattr(output, "text"):
-        return output.text or ""
-    return ""
-
-
-def _extract_tokens(response, kind: str) -> int:
-    """Extract token count from response usage."""
-    usage = response.usage
-    # New format: usage is a dict
-    if isinstance(usage, dict):
-        return usage.get(f"{kind}_tokens", 0)
-    # Old format: usage.input_tokens / usage.output_tokens
-    return getattr(usage, f"{kind}_tokens", 0)
 
 
 @dataclass
@@ -48,18 +24,51 @@ def build_chat_message(role: str, content: str) -> dict:
 
 
 class QwenClient:
+    """Unified Qwen API client. Backend auto-detected from QWEN_BACKEND env var.
+
+    DashScope (百炼): uses dashscope SDK, env DASHSCOPE_API_KEY
+    ModelScope (魔搭): uses openai SDK, env MODELSCOPE_API_KEY
+    """
+
     def __init__(self, model: str | None = None, api_key: str | None = None):
-        self.model = model or os.environ.get("QWEN_MODEL", "qwen-plus")
-        self.api_key = api_key or os.environ.get("DASHSCOPE_API_KEY", "")
+        backend = os.environ.get("QWEN_BACKEND", "dashscope")
+        self._backend = backend
         self.counter = TokenCounter()
+
+        if backend == "modelscope":
+            self.model = model or os.environ.get("QWEN_MODEL", "Qwen/Qwen3.5-35B-A3B")
+            self.api_key = api_key or os.environ.get("MODELSCOPE_API_KEY", "")
+            self._base_url = "https://api-inference.modelscope.cn/v1"
+        else:
+            self.model = model or os.environ.get("QWEN_MODEL", "qwen3.6-plus")
+            self.api_key = api_key or os.environ.get("DASHSCOPE_API_KEY", "")
+            self._base_url = None
 
     def chat(self, messages: list[dict], temperature: float = 0.1,
              max_tokens: int = 4096, timeout: int = 120) -> dict:
         """Send chat request and return parsed response with token counts."""
+        if self._backend == "modelscope":
+            return self._chat_modelscope(messages, temperature, max_tokens, timeout)
+        else:
+            return self._chat_dashscope(messages, temperature, max_tokens, timeout)
+
+    def _chat_dashscope(self, messages, temperature, max_tokens, timeout):
+        import dashscope
+        dashscope.base_http_api_url = "https://dashscope.aliyuncs.com/api/v1"
+        from dashscope import MultiModalConversation
+
+        # Convert plain text messages to multimodal format
+        mm_messages = []
+        for msg in messages:
+            mm_messages.append({
+                "role": msg["role"],
+                "content": [{"text": msg["content"]}],
+            })
+
         try:
-            response = Generation.call(
+            response = MultiModalConversation.call(
                 model=self.model,
-                messages=messages,
+                messages=mm_messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 api_key=self.api_key,
@@ -73,17 +82,60 @@ class QwenClient:
                 f"Qwen API error {response.status_code}: {response.message}"
             )
 
-        content = _extract_content(response)
-        input_tokens = _extract_tokens(response, "input")
-        output_tokens = _extract_tokens(response, "output")
+        # Extract content from multimodal response format
+        # response.output.choices[0].message.content is a list: [{"text": "..."}]
+        output = response.output
+        if hasattr(output, "choices") and output.choices:
+            msg_content = output.choices[0].message.content
+            if isinstance(msg_content, list) and len(msg_content) > 0:
+                content = "".join(
+                    item.get("text", "") for item in msg_content if isinstance(item, dict)
+                )
+            elif isinstance(msg_content, str):
+                content = msg_content
+            else:
+                content = ""
+        elif isinstance(output, dict):
+            content = output.get("text", "") or ""
+        else:
+            content = ""
+
+        # Extract token counts
+        usage = response.usage
+        if isinstance(usage, dict):
+            input_tokens = usage.get("input_tokens", 0)
+            output_tokens = usage.get("output_tokens", 0)
+        else:
+            input_tokens = getattr(usage, "input_tokens", 0)
+            output_tokens = getattr(usage, "output_tokens", 0)
 
         self.counter.add(input_tokens, output_tokens)
+        return {"content": content, "input_tokens": input_tokens, "output_tokens": output_tokens}
 
-        return {
-            "content": content,
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-        }
+    def _chat_modelscope(self, messages, temperature, max_tokens, timeout):
+        from openai import OpenAI
+        try:
+            client = OpenAI(
+                api_key=self.api_key,
+                base_url=self._base_url,
+                timeout=float(timeout),
+            )
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                timeout=float(timeout),
+            )
+        except Exception as e:
+            raise RuntimeError(f"ModelScope API call failed: {e}") from e
+
+        content = response.choices[0].message.content or ""
+        input_tokens = response.usage.prompt_tokens if response.usage else 0
+        output_tokens = response.usage.completion_tokens if response.usage else 0
+
+        self.counter.add(input_tokens, output_tokens)
+        return {"content": content, "input_tokens": input_tokens, "output_tokens": output_tokens}
 
     def reset_counter(self):
         self.counter = TokenCounter()

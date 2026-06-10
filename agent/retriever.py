@@ -1,21 +1,48 @@
 """Retriever: Stage 1 keyword-based + Stage 2 Qwen fine-grained filtering."""
 import re
+import jieba
 from collections import OrderedDict
 from agent.qwen_client import QwenClient, build_chat_message
+
+# Chinese stop words to filter out from keywords
+_STOP_WORDS = set("的 了 在 是 我 有 和 就 不 人 都 一 一个 上 也 很 到 说 要 去 你 会 着 没有 看 好 自己 这 他 她 它 们 那 些 什么 而 为 所 以 之 与 及 或 但 被 从 把 对 将 能 可以 可能 需要 已经 还 又 再 更 最 请 关于 根据 按照 下列 以下 以上 其中 包括 下列 各项 是否 目前 相关 进行 以及".split())
+
+# Minimum character length for Chinese keywords (filter out single chars like "条", "款")
+_MIN_KEYWORD_LEN = 2
 
 
 def extract_keywords_from_question(question: str) -> list[str]:
     keywords = []
+
+    # 1. Extract quoted names from 《...》
     quoted = re.findall(r'《([^》]+)》', question)
     keywords.extend(quoted)
+
+    # 2. Use entity patterns from indexer (company names, metrics, dates)
     from agent.indexer import ENTITY_PATTERNS
     for pattern_name in ["company", "metric", "date_threshold"]:
         pattern = ENTITY_PATTERNS.get(pattern_name)
         if pattern:
             for match in pattern.findall(question):
                 keywords.append(match)
-    chinese_terms = re.findall(r'[一-鿿]{3,}', question)
-    keywords.extend(chinese_terms)
+
+    # 3. Jieba Chinese word segmentation
+    # Remove punctuation for cleaner segmentation
+    clean_question = re.sub(r'[，。、；：？！\s]+', ' ', question)
+    words = jieba.cut(clean_question)
+    for w in words:
+        w = w.strip()
+        if len(w) >= _MIN_KEYWORD_LEN and w not in _STOP_WORDS:
+            keywords.append(w)
+
+    # 4. Also extract 2-4 char n-grams as fallback for financial terms
+    # that jieba might not know (e.g., clause numbers, product codes)
+    alpha_chars = re.findall(r'[一-鿿]{2,4}', question)
+    for term in alpha_chars:
+        if term not in _STOP_WORDS:
+            keywords.append(term)
+
+    # Deduplicate preserving order
     seen = set()
     unique = []
     for kw in keywords:
