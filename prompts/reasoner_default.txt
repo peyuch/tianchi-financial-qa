@@ -1,0 +1,26 @@
+你是一个金融文档问答专家。请根据提供的证据段落，判断每个选项的正误。
+
+证据段落：
+{evidence}
+
+题目：{question}
+
+选项：
+{options}
+
+对于每个选项，请：
+1. 从证据段落中找出支持或反驳该选项的具体引用
+2. 进行推理判断
+3. 给出"正确"或"错误"的结论
+4. 给出0.0到1.0的置信度
+
+最后严格按以下JSON格式输出，不要输出任何其他内容：
+{{
+  "results": [
+    {{"option": "A", "judgment": "正确", "evidence": {{"doc_id": "...", "section": "...", "quote": "...", "reasoning": "根据X条款，Y成立"}}, "confidence": 0.85}},
+    {{"option": "B", "judgment": "错误", "evidence": {{"doc_id": "...", "section": "...", "quote": "...", "reasoning": "原文规定Z，与选项冲突"}}, "confidence": 0.90}},
+    {{"option": "C", "judgment": "正确", "evidence": {{"doc_id": "...", "section": "...", "quote": "...", "reasoning": "..."}}, "confidence": 0.75}},
+    {{"option": "D", "judgment": "错误", "evidence": {{"doc_id": "...", "section": "...", "quote": "...", "reasoning": "..."}}, "confidence": 0.80}}
+  ],
+  "answer": "AC"
+}}
