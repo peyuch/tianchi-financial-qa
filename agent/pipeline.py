@@ -15,7 +15,7 @@ from agent.retriever import (
     extract_keywords_from_question, allocate_per_doc, prefilter_candidates,
     expand_evidence,
 )
-from agent.reasoner import reason
+from agent.reasoner import reason, needs_multi_recheck
 from agent.validator import (
     normalize_answer, validate_confidence,
     get_low_confidence_options, format_output_row, build_evidence_entry,
@@ -151,12 +151,19 @@ def run_pipeline(
         if not validate_confidence(result.get("results", [])):
             needs_retry = True
         elif check_shared_evidence_risk(result.get("results", [])):
+            needs_retry = True
+        elif needs_multi_recheck(result.get("results", []), answer_format):
+            print("  Multi-choice all-错误 collapse detected, rechecking...")
+            needs_retry = True
             print("  Shared evidence risk detected, retrying per-option...")
             needs_retry = True
 
         if needs_retry:
-            # Shared-evidence → retry ALL options; low-confidence → retry only weak ones
-            if check_shared_evidence_risk(result.get("results", [])):
+            # Choose retry strategy based on failure mode
+            if needs_multi_recheck(result.get("results", []), answer_format):
+                retry_opts = list(options.keys())
+                reason_label = "all-error-collapse"
+            elif check_shared_evidence_risk(result.get("results", [])):
                 retry_opts = list(options.keys())
                 reason_label = "shared-evidence"
             else:

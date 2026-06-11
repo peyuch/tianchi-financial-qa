@@ -72,22 +72,17 @@ def _derive_answer_from_judgments(results: list[dict], answer_format: str) -> st
         option = str(r.get("option", "")).upper()
         confidence = r.get("confidence", 0)
         if "正确" in judgment:
-            if confidence >= 0.6:
+            if confidence >= 0.3:  # lowered from 0.6 — model gives low conf even with evidence
                 correct_opts.append(option)
             else:
-                weak_opts.append(option)  # low-confidence "正确"
+                weak_opts.append(option)
 
     if answer_format == "multi":
-        # At least one correct: use all confirmed "正确"
         if correct_opts:
             return "".join(sorted(set(correct_opts)))
-        # Nothing confirmed — accept weak positives
         if weak_opts:
             return "".join(sorted(set(weak_opts)))
-        # All "错误" — but multi-choice must have ≥1 answer; pick lowest-confidence negatives
-        scored = sorted(results, key=lambda r: r.get("confidence", 0))
-        if scored:
-            return str(scored[0].get("option", "")).upper()
+        # All "错误" for multi → signal recheck needed, return empty
         return ""
 
     else:  # mcq or tf — single choice
@@ -100,6 +95,15 @@ def _derive_answer_from_judgments(results: list[dict], answer_format: str) -> st
         if scored:
             return str(scored[0].get("option", "")).upper()
         return ""
+
+
+def needs_multi_recheck(results: list[dict], answer_format: str) -> bool:
+    """Check if multi-choice question needs re-retrieval because all options
+    were judged '错误' — classic No Evidence → False collapse."""
+    if answer_format != "multi" or len(results) < 3:
+        return False
+    all_wrong = all("错误" in str(r.get("judgment", "")) for r in results)
+    return all_wrong
 
 
 def parse_reasoning_fallback(content: str, answer_format: str) -> dict:
