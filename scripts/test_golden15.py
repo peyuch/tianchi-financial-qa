@@ -58,7 +58,7 @@ for domain, doc_id in sorted(seen_docs):
     if os.path.exists(md_path):
         print(f"  [{i}/{len(seen_docs)}] {doc_id} (cached)")
     else:
-        print(f"  [{i}/{len(seen_docs)}] {doc_id} (parsing with MinerU...)", flush=True)
+        print(f"  [{i}/{len(seen_docs)}] {doc_id} (parsing, backend={args.pdf_backend}...)", flush=True)
         path = resolve_doc_path(domain, doc_id)
         if path:
             try:

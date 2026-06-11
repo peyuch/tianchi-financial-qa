@@ -80,16 +80,18 @@ def extract_text_pdf_mineru(filepath: str) -> str:
 
 
 def extract_text_pdf(filepath: str) -> str:
-    """Extract text from PDF. Tries MinerU first, falls back to PyMuPDF."""
-    # Try MinerU (GPU accelerated if CUDA available)
-    try:
-        import shutil
-        if shutil.which("mineru"):
-            return extract_text_pdf_mineru(filepath)
-    except Exception as e:
-        print(f"  MinerU failed ({e}), falling back to PyMuPDF")
+    """Extract text from PDF. Backend controlled by PDF_BACKEND config/env var."""
+    from config import PDF_BACKEND
 
-    # PyMuPDF fallback
+    if PDF_BACKEND == "mineru":
+        try:
+            import shutil
+            if shutil.which("mineru"):
+                return extract_text_pdf_mineru(filepath)
+        except Exception as e:
+            print(f"  MinerU failed ({e}), falling back to PyMuPDF")
+
+    # PyMuPDF (either selected or fallback)
     import fitz
     doc = fitz.open(filepath)
     pages = []
