@@ -36,12 +36,21 @@ client.reset_counter()
 
 # Preprocess + index
 keyword_index = {}
-for domain, doc_id in seen_docs:
+i = 0
+for domain, doc_id in sorted(seen_docs):
+    i += 1
     md_path = os.path.join(PROCESSED_DIR, f"{doc_id}.md")
-    if not os.path.exists(md_path):
+    if os.path.exists(md_path):
+        print(f"  [{i}/{len(seen_docs)}] {doc_id} (cached)")
+    else:
+        print(f"  [{i}/{len(seen_docs)}] {doc_id} (parsing with MinerU...)", flush=True)
         path = resolve_doc_path(domain, doc_id)
         if path:
-            md_path = preprocess_document(path, os.path.splitext(path)[1])
+            try:
+                md_path = preprocess_document(path, os.path.splitext(path)[1])
+                print(f"    -> OK ({os.path.getsize(md_path)} bytes)")
+            except Exception as e:
+                print(f"    -> FAIL: {e}")
     if os.path.exists(md_path):
         with open(md_path, "r", encoding="utf-8") as f:
             keyword_index.update(build_keyword_index(doc_id, f.read()))
