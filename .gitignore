@@ -20,5 +20,14 @@ logs/*.log
 # Raw PDFs — too large (~330MB), keep locally or upload to server separately
 public_dataset_upload/raw/
 
+# One-off debug scripts (may contain credentials)
+scripts/debug*.py
+scripts/find_model*.py
+scripts/test_api*.py
+scripts/test_minimal*.py
+scripts/test_modelscope*.py
+scripts/test_one_question*.py
+scripts/test_reg_a014*.py
+
 # Conda env
 .conda/
