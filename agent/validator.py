@@ -3,6 +3,26 @@ import re
 from config import LOW_CONFIDENCE_THRESHOLD
 
 
+def check_shared_evidence_risk(results: list[dict]) -> bool:
+    """Detect if all options share the same evidence — indicates retrieval failure.
+    When all options cite the same document + same quote, the model can't
+    differentiate and gives random answers.
+    Returns True if shared-evidence risk is detected.
+    """
+    if len(results) < 3:
+        return False
+    quotes = []
+    for r in results:
+        ev = r.get("evidence", {})
+        quote = ev.get("quote", "").strip()
+        if quote:
+            quotes.append(quote)
+    # If ≥3 options have identical non-empty quotes -> retrieval failure
+    if len(quotes) >= 3 and len(set(quotes)) == 1:
+        return True
+    return False
+
+
 def normalize_answer(raw: str, answer_format: str) -> str:
     """Normalize a raw model answer into a canonical form.
 

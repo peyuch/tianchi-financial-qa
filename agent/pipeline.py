@@ -19,6 +19,7 @@ from agent.reasoner import reason
 from agent.validator import (
     normalize_answer, validate_confidence,
     get_low_confidence_options, format_output_row, build_evidence_entry,
+    check_shared_evidence_risk,
 )
 
 
@@ -146,11 +147,24 @@ def run_pipeline(
         result = reason(client, evidence, question, options, prompt_name, answer_format)
 
         # Validate
+        needs_retry = False
         if not validate_confidence(result.get("results", [])):
-            low_opts = get_low_confidence_options(result.get("results", []))
-            print(f"  Low confidence on: {low_opts}, retrying...")
+            needs_retry = True
+        elif check_shared_evidence_risk(result.get("results", [])):
+            print("  Shared evidence risk detected, retrying per-option...")
+            needs_retry = True
 
-            for opt in low_opts:
+        if needs_retry:
+            # Shared-evidence → retry ALL options; low-confidence → retry only weak ones
+            if check_shared_evidence_risk(result.get("results", [])):
+                retry_opts = list(options.keys())
+                reason_label = "shared-evidence"
+            else:
+                retry_opts = get_low_confidence_options(result.get("results", []))
+                reason_label = "low-confidence"
+            print(f"  Retry ({reason_label}) on: {retry_opts}")
+
+            for opt in retry_opts:
                 opt_text = options.get(opt, "")
                 extra = stage1_retrieve(keyword_index, doc_ids, opt_text)
                 evidence.extend(extra[:3])

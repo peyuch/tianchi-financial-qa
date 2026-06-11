@@ -41,10 +41,11 @@ DOMAIN_CONFIG = {
         "default_prompt": "reasoner_clause",
     },
     "research": {
-        "context_token_cap": 3000,
-        "per_doc_cap": 1500,
+        "context_token_cap": 4000,    # ↑ from 3000, to fit more candidate paragraphs
+        "per_doc_cap": 2000,          # ↑ from 1500
         "max_docs": 2,
         "default_prompt": "reasoner_default",
+        "stage1_quota": 30,           # ↑ from 15, wider recall for research reports
     },
 }
 
