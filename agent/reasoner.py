@@ -42,32 +42,64 @@ def parse_reasoning_response(content: str, answer_format: str) -> dict:
         except json.JSONDecodeError:
             return parse_reasoning_fallback(content, answer_format)
 
-    answer = data.get("answer", "")
     results = data.get("results", [])
 
-    # If answer is empty, reconstruct from individual option judgments
-    if not answer and results:
-        correct_opts = []
-        for r in results:
-            judgment = r.get("judgment", "")
-            option = r.get("option", "")
-            if "正确" in str(judgment):
-                correct_opts.append(str(option).upper())
-        if correct_opts:
-            if answer_format == "multi":
-                answer = "".join(sorted(set(correct_opts)))
-            else:
-                answer = correct_opts[0]
-        elif answer_format in ("mcq", "tf"):
-            # Single-choice: all options judged "错误" — pick highest confidence
-            best = max(results, key=lambda r: r.get("confidence", 0))
-            answer = str(best.get("option", "")).upper()
+    # ── Always derive answer from individual option judgments ──
+    # Never trust the LLM's "answer" field — option judgments and
+    # aggregated answer often disagree (Option Judge ≠ Aggregator).
+    answer = _derive_answer_from_judgments(results, answer_format)
 
     return {
         "answer": answer,
         "results": results,
         "raw": content,
     }
+
+
+def _derive_answer_from_judgments(results: list[dict], answer_format: str) -> str:
+    """Programmatically derive final answer from per-option judgments.
+
+    Avoids the "Option Judge ≠ Final Aggregator" problem where the LLM
+    correctly judges individual options but puts wrong answer in JSON.
+    """
+    if not results:
+        return ""
+
+    correct_opts = []
+    weak_opts = []
+    for r in results:
+        judgment = str(r.get("judgment", ""))
+        option = str(r.get("option", "")).upper()
+        confidence = r.get("confidence", 0)
+        if "正确" in judgment:
+            if confidence >= 0.6:
+                correct_opts.append(option)
+            else:
+                weak_opts.append(option)  # low-confidence "正确"
+
+    if answer_format == "multi":
+        # At least one correct: use all confirmed "正确"
+        if correct_opts:
+            return "".join(sorted(set(correct_opts)))
+        # Nothing confirmed — accept weak positives
+        if weak_opts:
+            return "".join(sorted(set(weak_opts)))
+        # All "错误" — but multi-choice must have ≥1 answer; pick lowest-confidence negatives
+        scored = sorted(results, key=lambda r: r.get("confidence", 0))
+        if scored:
+            return str(scored[0].get("option", "")).upper()
+        return ""
+
+    else:  # mcq or tf — single choice
+        if correct_opts:
+            return correct_opts[0]
+        if weak_opts:
+            return weak_opts[0]
+        # All "错误" → pick the least-confident "错误" (model is least sure about it)
+        scored = sorted(results, key=lambda r: r.get("confidence", 0))
+        if scored:
+            return str(scored[0].get("option", "")).upper()
+        return ""
 
 
 def parse_reasoning_fallback(content: str, answer_format: str) -> dict:
