@@ -45,14 +45,9 @@ def resolve_doc_path(domain: str, doc_id: str) -> str | None:
     return None
 
 
-def extract_text_pdf_mineru(filepath: str) -> str:
-    """Extract text from PDF using MinerU (GPU-accelerated on CUDA, auto-fallback to CPU).
-
-    MinerU CLI auto-detects GPU. On GPU server, no -b flag is needed.
-    Output is cached in data/processed/ so subsequent runs skip parsing.
-    """
+def _extract_pdf_mineru(filepath: str) -> str:
+    """MinerU CLI — structured markdown with full table preservation."""
     import subprocess, tempfile, shutil
-
     output_dir = tempfile.mkdtemp(prefix="mineru_")
     try:
         result = subprocess.run(
@@ -61,38 +56,27 @@ def extract_text_pdf_mineru(filepath: str) -> str:
         )
         if result.returncode != 0:
             raise RuntimeError(f"MinerU failed: {result.stderr[:500]}")
-
-        # MinerU output: output_dir/{basename}/{basename}.md
         basename = os.path.splitext(os.path.basename(filepath))[0]
-        md_path = os.path.join(output_dir, basename, basename, f"{basename}.md")
-        if not os.path.isfile(md_path):
-            # Try alternative path pattern for some MinerU versions
-            alt = os.path.join(output_dir, basename, f"{basename}.md")
+        for alt in [
+            os.path.join(output_dir, basename, basename, f"{basename}.md"),
+            os.path.join(output_dir, basename, f"{basename}.md"),
+        ]:
             if os.path.isfile(alt):
-                md_path = alt
-            else:
-                raise RuntimeError(f"MinerU output not found at {md_path} or {alt}")
-
-        with open(md_path, "r", encoding="utf-8") as f:
-            return f.read()
+                with open(alt, "r", encoding="utf-8") as f:
+                    return f.read()
+        raise RuntimeError("MinerU output not found")
     finally:
         shutil.rmtree(output_dir, ignore_errors=True)
 
 
-def extract_text_pdf(filepath: str) -> str:
-    """Extract text from PDF. Backend controlled by PDF_BACKEND env var."""
-    import os as _os
-    backend = _os.environ.get("PDF_BACKEND", "mineru")
+def _extract_pdf_pymupdf4llm(filepath: str) -> str:
+    """PyMuPDF4LLM — markdown with auto-detected tables, headings, paragraphs."""
+    import pymupdf4llm
+    return pymupdf4llm.to_markdown(filepath)
 
-    if backend == "mineru":
-        try:
-            import shutil
-            if shutil.which("mineru"):
-                return extract_text_pdf_mineru(filepath)
-        except Exception as e:
-            print(f"  MinerU failed ({e}), falling back to PyMuPDF")
 
-    # PyMuPDF (either selected or fallback)
+def _extract_pdf_fitz_raw(filepath: str) -> str:
+    """Legacy PyMuPDF raw text — only as last-resort fallback."""
     import fitz
     doc = fitz.open(filepath)
     pages = []
@@ -102,6 +86,31 @@ def extract_text_pdf(filepath: str) -> str:
             pages.append(text)
     doc.close()
     return "\n\n".join(pages)
+
+
+def extract_text_pdf(filepath: str) -> str:
+    """Extract PDF as markdown.
+
+    Backend (env PDF_BACKEND):
+    - "pymupdf" → PyMuPDF4LLM (markdown, fast, default)
+    - "mineru"  → MinerU CLI (most structured, GPU-accelerated)
+    - "pymupdf-legacy" → fitz raw text (fastest, no structure)
+    """
+    import os as _os
+    backend = _os.environ.get("PDF_BACKEND", "pymupdf")
+
+    if backend == "mineru":
+        import shutil
+        if shutil.which("mineru"):
+            try:
+                return _extract_pdf_mineru(filepath)
+            except Exception as e:
+                print(f"  MinerU failed ({e}), falling back to PyMuPDF4LLM")
+    elif backend == "pymupdf-legacy":
+        return _extract_pdf_fitz_raw(filepath)
+
+    # Default: PyMuPDF4LLM
+    return _extract_pdf_pymupdf4llm(filepath)
 
 
 def extract_text_html(filepath: str) -> str:

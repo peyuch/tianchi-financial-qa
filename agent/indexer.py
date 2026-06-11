@@ -28,13 +28,14 @@ def build_keyword_index(doc_id: str, text: str, domain: str | None = None,
                         pdf_backend: str = "pymupdf") -> dict:
     """Build keyword index entries for a single document.
 
-    Uses domain-aware smart splitting for PyMuPDF, simple \n\n split for MinerU.
+    PyMuPDF4LLM and MinerU both output markdown → simple \n\n split.
+    PyMuPDF legacy raw text uses domain-aware smart splitting.
     """
-    if pdf_backend == "pymupdf" and domain:
+    if pdf_backend == "pymupdf-legacy" and domain:
         from agent.preprocessor import split_paragraphs_pymupdf
         paragraphs = split_paragraphs_pymupdf(text, domain)
     else:
-        # MinerU produces markdown — simple \n\n split is sufficient
+        # Markdown from PyMuPDF4LLM or MinerU — \n\n split works
         paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
 
     entries = []
