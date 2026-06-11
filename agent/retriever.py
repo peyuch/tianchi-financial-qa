@@ -62,27 +62,71 @@ def truncate_paragraphs(paragraphs: list[dict], max_tokens: int = 500) -> list[d
     return result
 
 
-def stage1_retrieve(index: dict, doc_ids: list[str], question: str) -> list[dict]:
+def stage1_retrieve(index: dict, doc_ids: list[str], question: str,
+                    options: dict | None = None) -> list[dict]:
+    """Retrieve candidates, allocating quota evenly across documents so
+    the first document doesn't consume all 30 slots before others are searched.
+
+    For financial domains, option-level metric keywords are prioritized over
+    generic question keywords, so financial data paragraphs rank higher than
+    cover pages and narrative sections.
+    """
     keywords = extract_keywords_from_question(question)
-    results = []
+    per_doc_quota = max(15, 30 // max(1, len(doc_ids)))
+
+    # For financial domains, prepend option-level metrics as high-priority keywords
+    _FINANCIAL_DOMAINS = {'financial_reports', 'financial_contracts', 'research'}
+    is_financial = any(d in _FINANCIAL_DOMAINS for d in doc_ids)
+
+    if is_financial and options:
+        target_metrics = extract_target_metrics(question, options)
+        # Put metrics first so they get searched before generic keywords
+        metric_kws = [m for m in target_metrics if m not in keywords]
+        keywords = metric_kws + keywords
+
+    all_results = []
     seen = set()
-    for kw in keywords:
-        for doc_id in doc_ids:
-            if doc_id not in index:
-                continue
+    doc_results_list = []
+    for doc_id in doc_ids:
+        if doc_id not in index:
+            continue
+        doc_results = []
+        for kw in keywords:
             for entry in index[doc_id]:
                 if kw.lower() in entry["text"].lower():
                     key = (doc_id, entry["para_id"])
                     if key not in seen:
                         seen.add(key)
-                        results.append({
+                        doc_results.append({
                             "doc_id": doc_id,
                             "para_id": entry["para_id"],
                             "text": entry["text"],
                         })
-        if len(results) >= 30:
-            break
-    return truncate_paragraphs(results[:30])
+            if len(doc_results) >= per_doc_quota * 3:
+                break
+        doc_results_list.append(doc_results)
+
+    # Score and re-rank: prefer paragraphs matching multiple target metrics
+    try:
+        target_metrics = extract_target_metrics(question, options) if options else _METRIC_NAMES
+    except Exception:
+        target_metrics = _METRIC_NAMES
+    for doc_results in doc_results_list:
+        for r in doc_results:
+            score = sum(1 for m in target_metrics if m in r["text"])
+            r["_score"] = score
+        doc_results.sort(key=lambda r: r.get("_score", 0), reverse=True)
+        # Keep only top per_doc_quota
+        doc_results[:] = doc_results[:per_doc_quota]
+
+    # Interleave results from different docs so truncation doesn't drop later docs
+    max_len = max((len(d) for d in doc_results_list), default=0)
+    for i in range(max_len):
+        for doc_results in doc_results_list:
+            if i < len(doc_results) and len(all_results) < 30:
+                all_results.append(doc_results[i])
+
+    return all_results[:30]  # Don't truncate — let downstream decide
 
 
 def allocate_per_doc(evidence: list[dict], per_doc_cap: int,
@@ -110,19 +154,131 @@ def allocate_per_doc(evidence: list[dict], per_doc_cap: int,
     return result
 
 
+# Financial metric names for targeted retrieval
+_METRIC_NAMES = [
+    '营业收入', '净利润', '归属于母公司', '归属于上市公司股东',
+    '研发投入', '现金流量净额', '经营活动.*?现金流',
+    '资产负债率', '每股收益', '基本每股收益', '稀释每股收益',
+    '毛利率', '营业成本', '总资产', '净资产', '净资产收益率',
+    '分红', '派息', '现金分红', '利润分配',
+    '保费', '现金价值', '身故保险金', '退保',
+    '募集资金', '发行金额', '发行规模', '主体信用评级',
+    # Convertible bond specific terms
+    '转股价格', '向下修正', '赎回条款', '有条件赎回', '到期赎回',
+    '回售条款', '股票代码', '发行日期', '初始转股', '票面利率',
+    '身故', '保险金', '领取', '账户价值',
+]
+
+
+def extract_target_metrics(question: str, options: dict) -> list[str]:
+    """Extract specific financial metric names from question + options."""
+    text = question + ' ' + ' '.join(options.values())
+    found = []
+    for m in _METRIC_NAMES:
+        if re.search(m, text):
+            found.append(m)
+    return found
+
+
+# Noise patterns for pre-filtering irrelevant paragraphs
+_NOISE_PATTERNS = [
+    re.compile(r'^第[一二三四五六七八九十百千\d]+章'),  # Chapter titles
+    re.compile(r'董事长致辞|总裁致辞|致股东|致各位股东'),  # Chairman letters
+    re.compile(r'目\s*录|CONTENTS|目  录'),  # TOC
+    re.compile(r'^\s*\d+\s*$'),  # Pure page numbers
+    re.compile(r'声明|免责|风险提示|重要提示'),  # Disclaimers
+    re.compile(r'释义项|释义内容'),  # Definition tables
+    re.compile(r'备查文件|备查'),  # Reference file lists
+]
+
+# Domains that benefit from noise filtering
+_NOISE_FILTER_DOMAINS = {'financial_reports', 'financial_contracts', 'research'}
+
+
+def prefilter_candidates(candidates: list[dict], domain: str) -> list[dict]:
+    """Filter out structural noise paragraphs before Stage 2."""
+    if domain not in _NOISE_FILTER_DOMAINS:
+        return candidates
+
+    filtered = []
+    for c in candidates:
+        text = c['text']
+        if not any(p.search(text) for p in _NOISE_PATTERNS):
+            filtered.append(c)
+
+    return filtered if len(filtered) >= 10 else candidates
+
+
+def _ensure_doc_coverage(evidence: list[dict], candidates: list[dict],
+                         expected_doc_ids: list[str], max_total: int = 5) -> list[dict]:
+    """Ensure at least one paragraph from each expected document is in evidence."""
+    if len(expected_doc_ids) <= 1:
+        return evidence[:max_total]
+
+    covered = {e['doc_id'] for e in evidence}
+    missing = [d for d in expected_doc_ids if d not in covered]
+
+    result = list(evidence)
+    for doc_id in missing:
+        # Find the best candidate from the missing document
+        for c in candidates:
+            if c['doc_id'] == doc_id and c not in result:
+                result.append(c)
+                break
+
+    return result[:max_total]
+
+
+def expand_evidence(evidence: list[dict], keyword_index: dict,
+                    expand_by: int = 1) -> list[dict]:
+    """For each evidence paragraph, also include the next N paragraphs from the same doc.
+
+    Fixes the pattern where Stage 2 selects section headers (e.g. "基本保险金额与身故保险金额")
+    but misses the actual clause text that follows immediately.
+    """
+    expanded = list(evidence)
+    seen = {(e['doc_id'], e['para_id']) for e in evidence}
+
+    for e in evidence:
+        doc_id = e['doc_id']
+        para_id = e['para_id']
+        entries = keyword_index.get(doc_id, [])
+        for offset in range(1, expand_by + 1):
+            target_id = para_id + offset
+            if (doc_id, target_id) in seen:
+                continue
+            for entry in entries:
+                if entry['para_id'] == target_id:
+                    expanded.append({
+                        'doc_id': doc_id,
+                        'para_id': target_id,
+                        'text': entry['text'],
+                    })
+                    seen.add((doc_id, target_id))
+                    break
+
+    return expanded
+
+
 def stage2_filter(client: QwenClient, candidates: list[dict],
-                  question: str, options: dict) -> tuple[list[dict], dict]:
+                  question: str, options: dict,
+                  expected_doc_ids: list[str] | None = None) -> tuple[list[dict], dict]:
     if len(candidates) <= 5:
         return candidates, {"input_tokens": 0, "output_tokens": 0}
 
+    # Pre-filter noise
     import os
     prompt_path = os.path.join(os.path.dirname(__file__), "..", "prompts", "stage2_filter.txt")
     with open(prompt_path, "r", encoding="utf-8") as f:
         template = f.read()
 
+    metrics = extract_target_metrics(question, options)
+    metrics_text = "、".join(metrics) if metrics else "无特定指标要求"
+
     options_text = "\n".join(f"{k}: {v}" for k, v in sorted(options.items()))
+    # Truncate candidates for prompt size control (2000 char limit, up from 500)
     candidates_text = "\n\n".join(
-        f"#{i}: [{c['doc_id']}] {c['text']}"
+        f"#{i}: [{c['doc_id']}] {c['text'][:2000]}"
         for i, c in enumerate(candidates)
     )
 
@@ -130,11 +286,12 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
         question=question,
         options=options_text,
         candidates=candidates_text,
+        metrics=metrics_text,
     )
 
     response = client.chat(
         messages=[build_chat_message("user", prompt)],
-        temperature=0.1,
+        temperature=0,
         max_tokens=500,
     )
 
@@ -148,6 +305,10 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
         if idx not in seen:
             seen.add(idx)
             top5.append(candidates[idx])
+
+    # Ensure each expected document is covered
+    if expected_doc_ids and len(expected_doc_ids) > 1:
+        top5 = _ensure_doc_coverage(top5, candidates, expected_doc_ids, max_total=5)
 
     token_usage = {
         "input_tokens": response["input_tokens"],

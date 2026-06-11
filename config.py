@@ -8,8 +8,8 @@ INDEX_DIR = os.path.join(os.path.dirname(__file__), "data", "indexes")
 SUMMARIES_DIR = os.path.join(os.path.dirname(__file__), "data", "summaries")
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
 
-# 赛题基准模型: Qwen3.6-plus (MultiModalConversation API)
-QWEN_MODEL = os.environ.get("QWEN_MODEL", "qwen3.6-plus")
+# qwen-max — strongest Qwen text model
+QWEN_MODEL = os.environ.get("QWEN_MODEL", "qwen-max")
 
 # Domain configuration
 DOMAIN_CONFIG = {

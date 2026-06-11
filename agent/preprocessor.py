@@ -45,8 +45,51 @@ def resolve_doc_path(domain: str, doc_id: str) -> str | None:
     return None
 
 
+def extract_text_pdf_mineru(filepath: str) -> str:
+    """Extract text from PDF using MinerU (GPU-accelerated on CUDA, auto-fallback to CPU).
+
+    MinerU CLI auto-detects GPU. On GPU server, no -b flag is needed.
+    Output is cached in data/processed/ so subsequent runs skip parsing.
+    """
+    import subprocess, tempfile, shutil
+
+    output_dir = tempfile.mkdtemp(prefix="mineru_")
+    try:
+        result = subprocess.run(
+            ["mineru", "-p", filepath, "-o", output_dir],
+            capture_output=True, text=True, timeout=600,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"MinerU failed: {result.stderr[:500]}")
+
+        # MinerU output: output_dir/{basename}/{basename}.md
+        basename = os.path.splitext(os.path.basename(filepath))[0]
+        md_path = os.path.join(output_dir, basename, basename, f"{basename}.md")
+        if not os.path.isfile(md_path):
+            # Try alternative path pattern for some MinerU versions
+            alt = os.path.join(output_dir, basename, f"{basename}.md")
+            if os.path.isfile(alt):
+                md_path = alt
+            else:
+                raise RuntimeError(f"MinerU output not found at {md_path} or {alt}")
+
+        with open(md_path, "r", encoding="utf-8") as f:
+            return f.read()
+    finally:
+        shutil.rmtree(output_dir, ignore_errors=True)
+
+
 def extract_text_pdf(filepath: str) -> str:
-    """Extract text from PDF using PyMuPDF as fallback (MinerU preferred when available)."""
+    """Extract text from PDF. Tries MinerU first, falls back to PyMuPDF."""
+    # Try MinerU (GPU accelerated if CUDA available)
+    try:
+        import shutil
+        if shutil.which("mineru"):
+            return extract_text_pdf_mineru(filepath)
+    except Exception as e:
+        print(f"  MinerU failed ({e}), falling back to PyMuPDF")
+
+    # PyMuPDF fallback
     import fitz
     doc = fitz.open(filepath)
     pages = []
@@ -89,6 +132,33 @@ def extract_text_txt(filepath: str) -> str:
         return f.read()
 
 
+def merge_orphan_number_lines(md_content: str) -> str:
+    """Merge orphan number lines into previous label lines.
+
+    Fixes the table fragmentation problem where PyMuPDF/MinerU splits
+    "营业收入（千元）" and "362,012,554" into separate lines.
+    After merging: "营业收入（千元） 362,012,554"
+    """
+    lines = md_content.split('\n')
+    merged = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped_next = lines[i + 1].strip() if i + 1 < len(lines) else ""
+        # If next line is an orphan number (digits/commas/spaces/dots/dashes only)
+        # and current line has meaningful content (>2 chars), merge them
+        if (i + 1 < len(lines)
+                and re.match(r'^[\d,，.\s\-%％]+$', stripped_next)
+                and stripped_next
+                and len(line.strip()) > 2):
+            merged.append(line.rstrip() + ' ' + stripped_next)
+            i += 2
+        else:
+            merged.append(line)
+            i += 1
+    return '\n'.join(merged)
+
+
 EXTRACTORS = {
     ".pdf": extract_text_pdf,
     ".PDF": extract_text_pdf,
@@ -112,6 +182,7 @@ def preprocess_document(filepath: str, file_type: str | None = None) -> str:
         raise ValueError(f"No extractor for file type: {file_type}")
 
     text = extractor(filepath)
+    text = merge_orphan_number_lines(text)
 
     doc_id = os.path.splitext(os.path.basename(filepath))[0]
     os.makedirs(PROCESSED_DIR, exist_ok=True)

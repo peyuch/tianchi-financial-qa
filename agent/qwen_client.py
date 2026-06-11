@@ -40,7 +40,7 @@ class QwenClient:
             self.api_key = api_key or os.environ.get("MODELSCOPE_API_KEY", "")
             self._base_url = "https://api-inference.modelscope.cn/v1"
         else:
-            self.model = model or os.environ.get("QWEN_MODEL", "qwen3.6-plus")
+            self.model = model or os.environ.get("QWEN_MODEL", "qwen-max")
             self.api_key = api_key or os.environ.get("DASHSCOPE_API_KEY", "")
             self._base_url = None
 
@@ -55,20 +55,11 @@ class QwenClient:
     def _chat_dashscope(self, messages, temperature, max_tokens, timeout):
         import dashscope
         dashscope.base_http_api_url = "https://dashscope.aliyuncs.com/api/v1"
-        from dashscope import MultiModalConversation
-
-        # Convert plain text messages to multimodal format
-        mm_messages = []
-        for msg in messages:
-            mm_messages.append({
-                "role": msg["role"],
-                "content": [{"text": msg["content"]}],
-            })
-
+        from dashscope import Generation
         try:
-            response = MultiModalConversation.call(
+            response = Generation.call(
                 model=self.model,
-                messages=mm_messages,
+                messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 api_key=self.api_key,
@@ -82,21 +73,14 @@ class QwenClient:
                 f"Qwen API error {response.status_code}: {response.message}"
             )
 
-        # Extract content from multimodal response format
-        # response.output.choices[0].message.content is a list: [{"text": "..."}]
+        # Extract content
         output = response.output
-        if hasattr(output, "choices") and output.choices:
-            msg_content = output.choices[0].message.content
-            if isinstance(msg_content, list) and len(msg_content) > 0:
-                content = "".join(
-                    item.get("text", "") for item in msg_content if isinstance(item, dict)
-                )
-            elif isinstance(msg_content, str):
-                content = msg_content
-            else:
-                content = ""
-        elif isinstance(output, dict):
+        if isinstance(output, dict):
             content = output.get("text", "") or ""
+        elif hasattr(output, "choices") and output.choices:
+            content = output.choices[0].message.content
+        elif hasattr(output, "text"):
+            content = output.text or ""
         else:
             content = ""
 

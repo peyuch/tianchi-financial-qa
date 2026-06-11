@@ -12,7 +12,8 @@ from agent.indexer import build_keyword_index, extract_summary, search_keyword_i
 from agent.domain_router import route_domain, select_reasoning_prompt, get_output_format
 from agent.retriever import (
     stage1_retrieve, stage2_filter, should_skip_stage2,
-    extract_keywords_from_question, allocate_per_doc,
+    extract_keywords_from_question, allocate_per_doc, prefilter_candidates,
+    expand_evidence,
 )
 from agent.reasoner import reason
 from agent.validator import (
@@ -115,18 +116,22 @@ def run_pipeline(
         print(f"\n[{i+1}/{len(questions)}] {qid} ({domain}, {answer_format})")
 
         # Retrieve
-        candidates = stage1_retrieve(keyword_index, doc_ids, question)
+        candidates = stage1_retrieve(keyword_index, doc_ids, question, options)
+        candidates = prefilter_candidates(candidates, domain)
 
         skip_s2 = should_skip_stage2(candidates, question)
         s2_usage = {"input_tokens": 0, "output_tokens": 0}
         if not skip_s2:
             try:
-                evidence, s2_usage = stage2_filter(client, candidates, question, options)
+                evidence, s2_usage = stage2_filter(client, candidates, question, options, doc_ids)
             except Exception as e:
                 print(f"  WARNING: Stage 2 failed ({e}), falling back to top-5 candidates")
                 evidence = candidates[:5]
         else:
             evidence = candidates[:5]
+
+        # Expand evidence: for each selected paragraph, also include its next paragraph
+        evidence = expand_evidence(evidence, keyword_index, expand_by=1)
 
         # Apply per-doc allocation for insurance domain
         if domain == "insurance":

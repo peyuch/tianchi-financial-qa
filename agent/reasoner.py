@@ -28,27 +28,46 @@ def build_reasoning_prompt(prompt_name: str, evidence: list[dict],
 
 
 def parse_reasoning_response(content: str, answer_format: str) -> dict:
+    data = None
     json_match = re.search(r'\{[\s\S]*"results"[\s\S]*\}', content)
     if json_match:
         try:
             data = json.loads(json_match.group(0))
-            return {
-                "answer": data.get("answer", ""),
-                "results": data.get("results", []),
-                "raw": content,
-            }
         except json.JSONDecodeError:
             pass
 
-    try:
-        data = json.loads(content.strip())
-        return {
-            "answer": data.get("answer", ""),
-            "results": data.get("results", []),
-            "raw": content,
-        }
-    except json.JSONDecodeError:
-        return parse_reasoning_fallback(content, answer_format)
+    if data is None:
+        try:
+            data = json.loads(content.strip())
+        except json.JSONDecodeError:
+            return parse_reasoning_fallback(content, answer_format)
+
+    answer = data.get("answer", "")
+    results = data.get("results", [])
+
+    # If answer is empty, reconstruct from individual option judgments
+    if not answer and results:
+        correct_opts = []
+        for r in results:
+            judgment = r.get("judgment", "")
+            option = r.get("option", "")
+            if "正确" in str(judgment):
+                correct_opts.append(str(option).upper())
+        if correct_opts:
+            if answer_format == "multi":
+                answer = "".join(sorted(set(correct_opts)))
+            else:
+                answer = correct_opts[0]
+        elif answer_format in ("mcq", "tf"):
+            # Single-choice: all options judged "错误" — pick highest confidence
+            best = max(results, key=lambda r: r.get("confidence", 0))
+            answer = str(best.get("option", "")).upper()
+
+    return {
+        "answer": answer,
+        "results": results,
+        "raw": content,
+    }
 
 
 def parse_reasoning_fallback(content: str, answer_format: str) -> dict:
@@ -84,7 +103,7 @@ def reason(client: QwenClient, evidence: list[dict], question: str,
 
     response = client.chat(
         messages=[build_chat_message("user", prompt)],
-        temperature=0.1,
+        temperature=0,
         max_tokens=4096,
     )
 
