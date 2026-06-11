@@ -80,10 +80,11 @@ def extract_text_pdf_mineru(filepath: str) -> str:
 
 
 def extract_text_pdf(filepath: str) -> str:
-    """Extract text from PDF. Backend controlled by PDF_BACKEND config/env var."""
-    from config import PDF_BACKEND
+    """Extract text from PDF. Backend controlled by PDF_BACKEND env var."""
+    import os as _os
+    backend = _os.environ.get("PDF_BACKEND", "mineru")
 
-    if PDF_BACKEND == "mineru":
+    if backend == "mineru":
         try:
             import shutil
             if shutil.which("mineru"):
