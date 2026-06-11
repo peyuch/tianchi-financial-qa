@@ -18,16 +18,30 @@ from agent.retriever import (
     stage1_retrieve, should_skip_stage2, stage2_filter,
     allocate_per_doc, prefilter_candidates, expand_evidence,
 )
-from agent.reasoner import reason
+from agent.reasoner import reason, reason_with_compression
+
+_COMPRESS_DOMAINS = {"insurance", "financial_contracts", "financial_reports"}
+
+def _do_reason(client, evidence, question, options, prompt_name, af, domain,
+               use_compress, keyword_index=None, doc_ids=None):
+    """Reason with optional two-stage compression."""
+    if use_compress and domain in _COMPRESS_DOMAINS:
+        return reason_with_compression(
+            client, evidence, question, options, prompt_name, af, domain,
+            keyword_index, doc_ids,
+        )
+    return reason(client, evidence, question, options, prompt_name, af)
 from agent.validator import normalize_answer, validate_confidence, get_low_confidence_options
 
 # Parse arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("--pdf-backend", default=PDF_BACKEND, choices=["mineru", "pymupdf"],
                     help="PDF parsing backend (default: %(default)s)")
+parser.add_argument("--compress", action="store_true",
+                    help="Enable two-stage fact extraction + compression reasoning")
 args = parser.parse_args()
 os.environ["PDF_BACKEND"] = args.pdf_backend
-print(f"PDF backend: {args.pdf_backend}")
+print(f"PDF backend: {args.pdf_backend} | Compress: {'ON' if args.compress else 'OFF'}")
 print()
 
 # Load golden questions
@@ -105,7 +119,8 @@ for i, q in enumerate(questions):
         evidence = allocate_per_doc(evidence, per_doc_cap=domain_config["per_doc_cap"], max_docs=domain_config["max_docs"])
 
     # Reason
-    result = reason(client, evidence, question, options, prompt_name, af)
+    result = _do_reason(client, evidence, question, options, prompt_name, af,
+                        domain, args.compress, keyword_index, doc_ids)
 
     # Retry on low confidence
     if not validate_confidence(result.get("results", [])):
@@ -121,7 +136,8 @@ for i, q in enumerate(questions):
                 unique_evidence.append(e)
         if domain == "insurance":
             unique_evidence = allocate_per_doc(unique_evidence, per_doc_cap=domain_config["per_doc_cap"], max_docs=domain_config["max_docs"])
-        result = reason(client, unique_evidence[:8], question, options, prompt_name, af)
+        result = _do_reason(client, unique_evidence[:8], question, options, prompt_name, af,
+                            domain, args.compress, keyword_index, doc_ids)
 
     answer = normalize_answer(result.get("answer", ""), af)
 
