@@ -24,23 +24,111 @@ ENTITY_PATTERNS = {
 }
 
 
+def _strip_markdown_noise(text: str) -> str:
+    """Replace markdown symbols with spaces for cleaner keyword matching."""
+    import re
+    return re.sub(r'[|#*>\-]+', ' ', text)
+
+
+def _is_markdown_table(lines: list[str]) -> bool:
+    """Check if a block of lines is a markdown table."""
+    pipe_lines = [l for l in lines if l.strip().startswith("|")]
+    return len(pipe_lines) >= 2 and any("---" in l for l in lines)
+
+
 def build_keyword_index(doc_id: str, text: str, domain: str | None = None,
                         pdf_backend: str = "pymupdf") -> dict:
     """Build keyword index entries for a single document.
 
-    PyMuPDF4LLM and MinerU both output markdown → simple \n\n split.
-    PyMuPDF legacy raw text uses domain-aware smart splitting.
+    PyMuPDF4LLM/MinerU: markdown-aware splitting — keeps tables whole.
+    PyMuPDF legacy: domain-aware smart splitting for raw text.
     """
     if pdf_backend == "pymupdf-legacy" and domain:
         from agent.preprocessor import split_paragraphs_pymupdf
         paragraphs = split_paragraphs_pymupdf(text, domain)
     else:
-        # Markdown from PyMuPDF4LLM or MinerU — \n\n split works
-        paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+        # Markdown-aware splitting: keep tables together, split by headings/blanks
+        lines = text.split("\n")
+        paragraphs = []
+        buf = []
+        for line in lines:
+            stripped = line.rstrip()
+            # Table continuation: | at line start → accumulate
+            if stripped.lstrip().startswith("|"):
+                buf.append(stripped)
+                continue
+            # Empty line → flush buffer as a paragraph
+            if not stripped.strip():
+                if buf:
+                    paragraphs.append("\n".join(buf))
+                    buf = []
+                continue
+            # Heading → flush previous, start new
+            if stripped.lstrip().startswith("#"):
+                if buf:
+                    paragraphs.append("\n".join(buf))
+                buf = [stripped]
+                continue
+            # Content line → accumulate
+            buf.append(stripped)
+
+        if buf:
+            paragraphs.append("\n".join(buf))
+
+        # ── Domain-aware chunk sizing for non-table paragraphs ──
+        max_chars = {
+            'financial_reports': 2500,
+            'financial_contracts': 2000,
+            'research': 2000,
+            'insurance': 1500,
+            'regulatory': 1000,
+        }.get(domain or "", 1500)
+
+        final = []
+        for p in paragraphs:
+            lines_in_p = p.split("\n")
+            if _is_markdown_table(lines_in_p):
+                # Keep tables whole unless truly enormous (>6000 chars)
+                if len(p) <= 6000:
+                    final.append(p)
+                else:
+                    # Split mega-table at row boundaries (every ~20 pipe rows)
+                    pipe_rows = [l for l in lines_in_p if l.strip().startswith("|")]
+                    chunk_rows = []
+                    chunk_len = 0
+                    for i, row in enumerate(pipe_rows):
+                        chunk_rows.append(row)
+                        chunk_len += len(row)
+                        if chunk_len > 3000 and i > 1:
+                            # Include header row in each chunk
+                            header = pipe_rows[0] if pipe_rows[0] else ""
+                            final.append(header + "\n" + "\n".join(chunk_rows))
+                            chunk_rows = [pipe_rows[0]] if pipe_rows[0] else []
+                            chunk_len = 0
+                    if chunk_rows:
+                        final.append("\n".join(chunk_rows))
+            elif len(p) <= max_chars:
+                final.append(p)
+            else:
+                # Split long text paragraph at sentence boundaries
+                import re
+                sentences = re.split(r'(?<=[。；\n])', p)
+                chunk, chunk_len = [], 0
+                for s in sentences:
+                    if chunk_len + len(s) > max_chars and chunk:
+                        final.append("".join(chunk))
+                        chunk, chunk_len = [s], len(s)
+                    else:
+                        chunk.append(s)
+                        chunk_len += len(s)
+                if chunk:
+                    final.append("".join(chunk))
+
+        paragraphs = final
 
     entries = []
     for i, para in enumerate(paragraphs):
-        if len(para) < 10:
+        if len(_strip_markdown_noise(para).strip()) < 10:
             continue
         entries.append({"para_id": i, "text": para})
     return {doc_id: entries}

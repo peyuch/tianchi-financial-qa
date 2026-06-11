@@ -62,15 +62,15 @@ def truncate_paragraphs(paragraphs: list[dict], max_tokens: int = 500) -> list[d
     return result
 
 
+def _clean_for_keywords(text: str) -> str:
+    """Strip markdown symbols to avoid jieba noise from |, #, *, - etc."""
+    import re
+    return re.sub(r'[|#*>\-]+', ' ', text)
+
+
 def stage1_retrieve(index: dict, doc_ids: list[str], question: str,
                     options: dict | None = None) -> list[dict]:
-    """Retrieve candidates, allocating quota evenly across documents so
-    the first document doesn't consume all 30 slots before others are searched.
-
-    For financial domains, option-level metric keywords are prioritized over
-    generic question keywords, so financial data paragraphs rank higher than
-    cover pages and narrative sections.
-    """
+    """Retrieve candidates, allocating quota evenly across documents."""
     keywords = extract_keywords_from_question(question)
     per_doc_quota = max(15, 30 // max(1, len(doc_ids)))
 
@@ -93,7 +93,8 @@ def stage1_retrieve(index: dict, doc_ids: list[str], question: str,
         doc_results = []
         for kw in keywords:
             for entry in index[doc_id]:
-                if kw.lower() in entry["text"].lower():
+                clean_text = _clean_for_keywords(entry["text"]).lower()
+                if kw.lower() in clean_text:
                     key = (doc_id, entry["para_id"])
                     if key not in seen:
                         seen.add(key)
@@ -276,9 +277,14 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
     metrics_text = "、".join(metrics) if metrics else "无特定指标要求"
 
     options_text = "\n".join(f"{k}: {v}" for k, v in sorted(options.items()))
-    # Truncate candidates for prompt size control (2000 char limit, up from 500)
+    # Dynamic truncation: markdown tables get 4000 chars, others 2000
+    def _truncate_candidate(text: str) -> str:
+        is_table = "|---" in text or text.strip().startswith("|")
+        limit = 4000 if is_table else 2000
+        return text[:limit] if len(text) > limit else text
+
     candidates_text = "\n\n".join(
-        f"#{i}: [{c['doc_id']}] {c['text'][:2000]}"
+        f"#{i}: [{c['doc_id']}] {_truncate_candidate(c['text'])}"
         for i, c in enumerate(candidates)
     )
 

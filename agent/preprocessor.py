@@ -310,7 +310,9 @@ def preprocess_document(filepath: str, file_type: str | None = None) -> str:
         raise ValueError(f"No extractor for file type: {file_type}")
 
     text = extractor(filepath)
-    text = merge_orphan_number_lines(text)
+    # Only run orphan merge for legacy raw-text backend
+    if os.environ.get("PDF_BACKEND", "pymupdf") == "pymupdf-legacy":
+        text = merge_orphan_number_lines(text)
 
     doc_id = os.path.splitext(os.path.basename(filepath))[0]
     os.makedirs(PROCESSED_DIR, exist_ok=True)
