@@ -24,8 +24,19 @@ ENTITY_PATTERNS = {
 }
 
 
-def build_keyword_index(doc_id: str, text: str) -> dict:
-    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+def build_keyword_index(doc_id: str, text: str, domain: str | None = None,
+                        pdf_backend: str = "pymupdf") -> dict:
+    """Build keyword index entries for a single document.
+
+    Uses domain-aware smart splitting for PyMuPDF, simple \n\n split for MinerU.
+    """
+    if pdf_backend == "pymupdf" and domain:
+        from agent.preprocessor import split_paragraphs_pymupdf
+        paragraphs = split_paragraphs_pymupdf(text, domain)
+    else:
+        # MinerU produces markdown — simple \n\n split is sufficient
+        paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+
     entries = []
     for i, para in enumerate(paragraphs):
         if len(para) < 10:

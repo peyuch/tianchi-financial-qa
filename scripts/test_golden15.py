@@ -68,7 +68,7 @@ for domain, doc_id in sorted(seen_docs):
                 print(f"    -> FAIL: {e}")
     if os.path.exists(md_path):
         with open(md_path, "r", encoding="utf-8") as f:
-            keyword_index.update(build_keyword_index(doc_id, f.read()))
+            keyword_index.update(build_keyword_index(doc_id, f.read(), domain, args.pdf_backend))
 
 print(f"Indexed {len(keyword_index)} documents\n")
 

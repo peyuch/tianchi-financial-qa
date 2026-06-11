@@ -135,6 +135,122 @@ def extract_text_txt(filepath: str) -> str:
         return f.read()
 
 
+def split_paragraphs_pymupdf(text: str, domain: str) -> list[str]:
+    """Smart paragraph splitting for PyMuPDF raw text output.
+
+    PyMuPDF dumps pages as flat text without structure. This reconstructs:
+    - Table rows (metric name + value lines glued together)
+    - Multi-column table blocks (space-aligned PyMuPDF output)
+    - Natural paragraph boundaries
+    - Domain-specific max chunk sizes to avoid oversized paragraphs
+    """
+    import re
+
+    # ── Step 1: Clean page headers/footers ──
+    text = re.sub(
+        r'[一-鿿]{2,20}(股份有限公司|集团|保险|证券)[^\n]{0,30}第\s*\d+\s*页\n?',
+        '', text
+    )
+    text = re.sub(r'^\s*\d{1,4}\s*$', '', text, flags=re.MULTILINE)
+
+    # ── Step 2: Reconstruct table structure ──
+    lines = text.split('\n')
+    paragraphs = []
+    i = 0
+
+    # Metric keywords for table row detection
+    metric_pattern = re.compile(
+        r'营业收入|净利润|总资产|净资产|现金流|研发|每股|保费|赔付|'
+        r'发行金额|票面利率|资产负债率|毛利率|营业成本|归属于|'
+        r'现金分红|利润分配|募集资金|发行规模|信用评级|转股价格|'
+        r'赎回条款|回售条款|股票代码|发行日期|身故保险金|现金价值|'
+        r'基本保额|账户价值|免赔额'
+    )
+    number_pattern = re.compile(r'^[\d,.\s\-（）%亿万元千百]+$')
+
+    while i < len(lines):
+        line = lines[i].strip()
+        if not line:
+            i += 1
+            continue
+
+        # Detect table: metric name + next line is a number
+        is_metric = bool(metric_pattern.search(line))
+        next_line = lines[i + 1].strip() if i + 1 < len(lines) else ''
+        is_number = bool(number_pattern.match(next_line)) if next_line else False
+
+        if is_metric and is_number:
+            table_block = [line + ' ' + next_line]
+            i += 2
+            while i < len(lines):
+                curr = lines[i].strip()
+                nxt = lines[i + 1].strip() if i + 1 < len(lines) else ''
+                if curr and bool(number_pattern.match(nxt)):
+                    table_block.append(curr + ' ' + nxt)
+                    i += 2
+                else:
+                    break
+            paragraphs.append('\n'.join(table_block))
+
+        # Detect space-aligned multi-column table rows (PyMuPDF column format)
+        elif re.match(r'^.{2,15}\s{3,}.{1,20}\s{3,}', line):
+            table_lines = [line]
+            i += 1
+            while i < len(lines):
+                next_l = lines[i].strip()
+                if next_l and re.match(r'^.{2,15}\s{3,}', next_l):
+                    table_lines.append(next_l)
+                    i += 1
+                else:
+                    break
+            paragraphs.append('\n'.join(table_lines))
+
+        else:
+            # Normal text: accumulate until blank line or next metric row
+            text_block = [line]
+            i += 1
+            while i < len(lines):
+                next_l = lines[i].strip()
+                if not next_l:
+                    i += 1
+                    break
+                if metric_pattern.search(next_l):
+                    break
+                text_block.append(next_l)
+                i += 1
+            block = ' '.join(text_block)
+            if len(block) > 15:
+                paragraphs.append(block)
+
+    # ── Step 3: Domain-aware max chunk size ──
+    max_chars = {
+        'financial_reports': 1500,
+        'financial_contracts': 1200,
+        'research': 1000,
+        'insurance': 800,
+        'regulatory': 600,
+    }.get(domain, 1000)
+
+    result = []
+    for p in paragraphs:
+        if len(p) <= max_chars:
+            result.append(p)
+        else:
+            sentences = re.split(r'(?<=[。；\n])', p)
+            chunk, chunk_len = [], 0
+            for s in sentences:
+                if chunk_len + len(s) > max_chars and chunk:
+                    result.append(''.join(chunk))
+                    chunk, chunk_len = [s], len(s)
+                else:
+                    chunk.append(s)
+                    chunk_len += len(s)
+            if chunk:
+                result.append(''.join(chunk))
+
+    return [p for p in result if len(p.strip()) > 15]
+
+
 def merge_orphan_number_lines(md_content: str) -> str:
     """Merge orphan number lines into previous label lines.
 

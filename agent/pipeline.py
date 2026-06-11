@@ -84,7 +84,8 @@ def run_pipeline(
     for doc_id, (domain, md_path) in doc_md_map.items():
         with open(md_path, "r", encoding="utf-8") as f:
             text = f.read()
-        doc_index = build_keyword_index(doc_id, text)
+        pdf_backend = os.environ.get("PDF_BACKEND", "pymupdf")
+        doc_index = build_keyword_index(doc_id, text, domain, pdf_backend)
         keyword_index.update(doc_index)
         summary = extract_summary(doc_id, domain, text)
         summaries.append(summary)
