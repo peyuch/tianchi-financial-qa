@@ -13,6 +13,21 @@ def build_reasoning_prompt(prompt_name: str, evidence: list[dict],
     with open(prompt_path, "r", encoding="utf-8") as f:
         template = f.read()
 
+    # Reorder evidence to combat "Lost in the Middle":
+    # Put most content-rich paragraphs at start + end, weakest in the middle
+    scored = sorted(evidence, key=lambda e: len(e.get("text", "")), reverse=True)
+    if len(scored) > 4:
+        ordered = [scored[0], scored[-2], scored[1], scored[-1]] + scored[2:-2]
+        # Deduplicate preserving order
+        seen = set()
+        ordered_uniq = []
+        for e in ordered + [x for x in scored if x not in ordered]:
+            key = (e.get("doc_id"), e.get("text", "")[:100])
+            if key not in seen:
+                seen.add(key)
+                ordered_uniq.append(e)
+        evidence = ordered_uniq
+
     evidence_text = "\n\n---\n\n".join(
         f"[{e['doc_id']}]\n{e['text']}" for e in evidence
     )
