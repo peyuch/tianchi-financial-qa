@@ -56,7 +56,7 @@ def extract_text_pdf_mineru(filepath: str) -> str:
     output_dir = tempfile.mkdtemp(prefix="mineru_")
     try:
         result = subprocess.run(
-            ["mineru", "-p", filepath, "-o", output_dir],
+            ["mineru", "-p", filepath, "-o", output_dir, "-b", "pipeline"],
             capture_output=True, text=True, timeout=600,
         )
         if result.returncode != 0:
