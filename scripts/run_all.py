@@ -31,8 +31,9 @@ from agent.validator import normalize_answer, validate_confidence, get_low_confi
 
 # Parse arguments
 parser = argparse.ArgumentParser()
-parser.add_argument("--pdf-backend", default=PDF_BACKEND, choices=["mineru", "pymupdf"],
-                    help="PDF parsing backend (default: %(default)s)")
+parser.add_argument("--pdf-backend", default=PDF_BACKEND,
+                    choices=["pymupdf4llm", "mineru", "pymupdf"],
+                    help="PDF backend: pymupdf4llm (markdown,default), mineru (GPU), pymupdf (raw)")
 parser.add_argument("--compress", action="store_true",
                     help="Enable two-stage fact extraction + compression reasoning")
 args = parser.parse_args()

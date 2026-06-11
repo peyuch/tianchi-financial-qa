@@ -11,8 +11,11 @@ OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
 # qwen-max — strongest Qwen text model
 QWEN_MODEL = os.environ.get("QWEN_MODEL", "qwen-max")
 
-# PDF parsing backend: "mineru" (GPU accelerated, slow CPU fallback) or "pymupdf" (fast, plain text)
-PDF_BACKEND = os.environ.get("PDF_BACKEND", "mineru")
+# PDF parsing backend:
+#   "pymupdf4llm" — PyMuPDF4LLM (markdown with tables/headings, fast, DEFAULT)
+#   "mineru"      — MinerU CLI (best structure, GPU-accelerated, slow)
+#   "pymupdf"     — PyMuPDF legacy raw text (fastest, no structure)
+PDF_BACKEND = os.environ.get("PDF_BACKEND", "pymupdf4llm")
 
 # Domain configuration
 DOMAIN_CONFIG = {

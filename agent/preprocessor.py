@@ -92,12 +92,12 @@ def extract_text_pdf(filepath: str) -> str:
     """Extract PDF as markdown.
 
     Backend (env PDF_BACKEND):
-    - "pymupdf" → PyMuPDF4LLM (markdown, fast, default)
-    - "mineru"  → MinerU CLI (most structured, GPU-accelerated)
-    - "pymupdf-legacy" → fitz raw text (fastest, no structure)
+    - "pymupdf4llm" → PyMuPDF4LLM (markdown, tables, fast, DEFAULT)
+    - "mineru"      → MinerU CLI (best structure, GPU, slow)
+    - "pymupdf"     → PyMuPDF fitz raw text (no structure, fastest)
     """
     import os as _os
-    backend = _os.environ.get("PDF_BACKEND", "pymupdf")
+    backend = _os.environ.get("PDF_BACKEND", "pymupdf4llm")
 
     if backend == "mineru":
         import shutil
@@ -106,7 +106,7 @@ def extract_text_pdf(filepath: str) -> str:
                 return _extract_pdf_mineru(filepath)
             except Exception as e:
                 print(f"  MinerU failed ({e}), falling back to PyMuPDF4LLM")
-    elif backend == "pymupdf-legacy":
+    elif backend == "pymupdf":
         return _extract_pdf_fitz_raw(filepath)
 
     # Default: PyMuPDF4LLM
@@ -310,8 +310,8 @@ def preprocess_document(filepath: str, file_type: str | None = None) -> str:
         raise ValueError(f"No extractor for file type: {file_type}")
 
     text = extractor(filepath)
-    # Only run orphan merge for legacy raw-text backend
-    if os.environ.get("PDF_BACKEND", "pymupdf") == "pymupdf-legacy":
+    # Only run orphan merge for legacy raw-text backend (pymupdf)
+    if os.environ.get("PDF_BACKEND", "pymupdf4llm") == "pymupdf":
         text = merge_orphan_number_lines(text)
 
     doc_id = os.path.splitext(os.path.basename(filepath))[0]

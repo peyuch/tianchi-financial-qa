@@ -43,7 +43,7 @@ def build_keyword_index(doc_id: str, text: str, domain: str | None = None,
     PyMuPDF4LLM/MinerU: markdown-aware splitting — keeps tables whole.
     PyMuPDF legacy: domain-aware smart splitting for raw text.
     """
-    if pdf_backend == "pymupdf-legacy" and domain:
+    if pdf_backend == "pymupdf" and domain:
         from agent.preprocessor import split_paragraphs_pymupdf
         paragraphs = split_paragraphs_pymupdf(text, domain)
     else:
