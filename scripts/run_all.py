@@ -1,10 +1,15 @@
-"""Run full pipeline on all 100 A榜 questions, generate answer.csv + evidence.json."""
-import os, sys, json, io, time
+"""Run full pipeline on all 100 A榜 questions, generate answer.csv + evidence.json.
+
+Usage:
+  python scripts/run_all.py                          # default: mineru
+  python scripts/run_all.py --pdf-backend pymupdf    # fast, plain text
+  python scripts/run_all.py --pdf-backend mineru     # GPU accelerated
+"""
+import os, sys, json, io, time, argparse
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# Ensure output is not buffered
 sys.stdout.reconfigure(encoding='utf-8', errors='replace') if hasattr(sys.stdout, 'reconfigure') else None
 
-from config import PROCESSED_DIR, OUTPUT_DIR, TOKEN_BUDGET, OUTPUT_CSV_FIELDNAMES
+from config import PROCESSED_DIR, OUTPUT_DIR, TOKEN_BUDGET, OUTPUT_CSV_FIELDNAMES, PDF_BACKEND
 from agent.qwen_client import QwenClient
 from agent.preprocessor import resolve_doc_path, preprocess_document
 from agent.indexer import build_keyword_index
@@ -12,6 +17,15 @@ from agent.domain_router import route_domain, select_reasoning_prompt
 from agent.retriever import stage1_retrieve, should_skip_stage2, stage2_filter, allocate_per_doc
 from agent.reasoner import reason
 from agent.validator import normalize_answer, validate_confidence, get_low_confidence_options, format_output_row, build_evidence_entry
+
+# Parse arguments
+parser = argparse.ArgumentParser()
+parser.add_argument("--pdf-backend", default=PDF_BACKEND, choices=["mineru", "pymupdf"],
+                    help="PDF parsing backend (default: %(default)s)")
+args = parser.parse_args()
+os.environ["PDF_BACKEND"] = args.pdf_backend
+print(f"PDF backend: {args.pdf_backend}")
+print()
 
 # Collect all questions
 all_questions = []

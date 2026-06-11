@@ -1,9 +1,15 @@
-"""Run 15 golden questions — first 3 from each domain."""
-import os, sys, json, io, time, csv
+"""Run 15 golden questions — first 3 from each domain.
+
+Usage:
+  python scripts/test_golden15.py                          # default: mineru
+  python scripts/test_golden15.py --pdf-backend pymupdf    # fast, plain text
+  python scripts/test_golden15.py --pdf-backend mineru     # GPU accelerated
+"""
+import os, sys, json, io, time, csv, argparse
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-from config import PROCESSED_DIR, OUTPUT_CSV_FIELDNAMES
+from config import PROCESSED_DIR, OUTPUT_CSV_FIELDNAMES, PDF_BACKEND
 from agent.qwen_client import QwenClient
 from agent.preprocessor import resolve_doc_path, preprocess_document
 from agent.indexer import build_keyword_index
@@ -14,6 +20,15 @@ from agent.retriever import (
 )
 from agent.reasoner import reason
 from agent.validator import normalize_answer, validate_confidence, get_low_confidence_options
+
+# Parse arguments
+parser = argparse.ArgumentParser()
+parser.add_argument("--pdf-backend", default=PDF_BACKEND, choices=["mineru", "pymupdf"],
+                    help="PDF parsing backend (default: %(default)s)")
+args = parser.parse_args()
+os.environ["PDF_BACKEND"] = args.pdf_backend
+print(f"PDF backend: {args.pdf_backend}")
+print()
 
 # Load golden questions
 with open("tests/golden_15.json", "r", encoding="utf-8") as f:
