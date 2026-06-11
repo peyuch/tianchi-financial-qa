@@ -31,7 +31,8 @@ def _do_reason(client, evidence, question, options, prompt_name, af, domain,
             keyword_index, doc_ids,
         )
     return reason(client, evidence, question, options, prompt_name, af)
-from agent.validator import normalize_answer, validate_confidence, get_low_confidence_options
+from agent.validator import (normalize_answer, validate_confidence,
+                              get_low_confidence_options, build_evidence_entry)
 
 # Parse arguments
 parser = argparse.ArgumentParser()
@@ -88,6 +89,7 @@ print(f"Indexed {len(keyword_index)} documents\n")
 
 # Process questions
 results = []
+evidence_entries = []
 start = time.time()
 
 for i, q in enumerate(questions):
@@ -148,6 +150,8 @@ for i, q in enumerate(questions):
     print(f"[{i+1:2d}/15] {qid} | ans={answer:4s} | {prompt_name:22s} | "
           f"S2={'skip' if skip_s2 else 'call'} | tok={q_prompt}/{q_completion} | {elapsed:.0f}s")
 
+    result["answer"] = answer
+    evidence_entries.append(build_evidence_entry(qid, result))
     results.append({
         "qid": qid,
         "domain": domain,
@@ -176,3 +180,7 @@ with open("output/golden15_answer.csv", "w", encoding="utf-8", newline="") as f:
     for r in results:
         writer.writerow({"qid": r["qid"], "answer": r["answer"], "prompt_tokens": r["prompt_tokens"], "completion_tokens": r["completion_tokens"], "total_tokens": r["total_tokens"]})
 print("\nWrote output/golden15_answer.csv")
+
+with open("output/golden15_evidence.json", "w", encoding="utf-8") as f:
+    json.dump(evidence_entries, f, ensure_ascii=False, indent=2)
+print("Wrote output/golden15_evidence.json")
