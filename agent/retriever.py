@@ -508,11 +508,14 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
     }
     # ── Instruction 1 (continued): Force golden hints into evidence ──
     # Golden hints get guaranteed inclusion, immune to filtering
+    # Cap at 5 to prevent token overflow
     _seen_hint_texts = {e['text'][:100] for e in top}
+    _hints_added = 0
     for gh in _golden_hints:
-        if gh['text'][:100] not in _seen_hint_texts:
+        if gh['text'][:100] not in _seen_hint_texts and _hints_added < 5:
             top.insert(0, gh)  # prepend for maximum LLM attention
             _seen_hint_texts.add(gh['text'][:100])
+            _hints_added += 1
 
     # Document-balanced rebalancing: allocate equal slots per document
     max_docs = len(expected_doc_ids) if expected_doc_ids else 1

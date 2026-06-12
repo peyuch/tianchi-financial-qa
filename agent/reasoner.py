@@ -13,12 +13,10 @@ def build_reasoning_prompt(prompt_name: str, evidence: list[dict],
     with open(prompt_path, "r", encoding="utf-8") as f:
         template = f.read()
 
-    # Reorder evidence to combat "Lost in the Middle":
-    # Put most content-rich paragraphs at start + end, weakest in the middle
+    # Reorder evidence to combat "Lost in the Middle"
     scored = sorted(evidence, key=lambda e: len(e.get("text", "")), reverse=True)
     if len(scored) > 4:
         ordered = [scored[0], scored[-2], scored[1], scored[-1]] + scored[2:-2]
-        # Deduplicate preserving order
         seen = set()
         ordered_uniq = []
         for e in ordered + [x for x in scored if x not in ordered]:
@@ -28,9 +26,18 @@ def build_reasoning_prompt(prompt_name: str, evidence: list[dict],
                 ordered_uniq.append(e)
         evidence = ordered_uniq
 
-    evidence_text = "\n\n---\n\n".join(
-        f"[{e['doc_id']}]\n{e['text']}" for e in evidence
-    )
+    # Safety truncation: cap at ~25K chars to stay within qwen-max's 30720 token limit
+    MAX_EVIDENCE_CHARS = 25000
+    evidence_text = ""
+    for e in evidence:
+        chunk = f"[{e['doc_id']}]\n{e['text']}"
+        if len(evidence_text) + len(chunk) + 4 > MAX_EVIDENCE_CHARS:
+            remaining = MAX_EVIDENCE_CHARS - len(evidence_text) - 50
+            if remaining > 200:
+                evidence_text += "\n\n---\n\n" + chunk[:remaining] + "…[truncated]"
+            break
+        evidence_text += ("\n\n---\n\n" if evidence_text else "") + chunk
+
     options_text = "\n".join(
         f"{k}. {v}" for k, v in sorted(options.items())
     )
