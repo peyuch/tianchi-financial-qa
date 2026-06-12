@@ -31,20 +31,28 @@ def _strip_markdown_noise(text: str) -> str:
 
 
 def preprocess_and_chunk_md(text: str, doc_id: str) -> list[dict]:
-    """Heading-aware chunking with ancestor path injection.
+    """Multi-domain adaptive chunking with ancestor path injection.
 
-    Produces self-describing chunks where each paragraph is prefixed with
-    its full heading hierarchy, dramatically improving BM25 keyword recall
-    for deeply nested clauses (e.g., insurance policy articles).
+    Produces dual-track chunks:
+    - text_for_llm: full markdown with path prefix (for Qwen)
+    - text_for_search: cleaned plain text, <br>→spaces, symbols stripped (for jieba)
     """
     import re
 
-    # ── STEP 1: Noise cleaning ──
+    # ── STEP 1: Global noise cleaning ──
+    # Remove picture text blocks (research reports)
+    text = re.sub(
+        r'\*\*-----\s*Start of picture text\s*-----\*\*(?:<br>)?[\s\S]*?'
+        r'\*\*-----\s*End of picture text\s*-----\*\*(?:<br>)?', '', text
+    )
+    # Remove image placeholders
     text = re.sub(r'\*\*==> picture \[\d+ x \d+\] intentionally omitted <==\*\*', '', text)
+    # Erase Wingdings garbage
     text = re.sub(r'[•●─]', '', text)
+    # Unwrap bracket-wrapped lines
     text = re.sub(r'-\s*\[(.*?)\]', r'- \1', text)
 
-    # ── STEP 2: Heading-aware state-machine chunking ──
+    # ── STEP 2: State-machine chunking ──
     lines = text.split('\n')
     chunks = []
     current_headings = {1: "", 2: "", 3: ""}
@@ -57,19 +65,15 @@ def preprocess_and_chunk_md(text: str, doc_id: str) -> list[dict]:
         if not stripped:
             continue
 
+        # Boundary detectors
         header_match = re.match(r'^(#{1,3})\s+(.*)', stripped)
-        clause_match = re.match(r'^-\s*(\d+\.\d+)\s+(.*)', stripped)
-
-        is_trigger = header_match or clause_match or (in_table and not stripped.startswith('|'))
+        ins_match = re.match(r'^-\s*(\d+\.\d+)\s+(.*)', stripped)   # insurance clause
+        reg_match = re.match(r'^第([一二三四五六七八九十百千\d]+)条\s*(.*)', stripped)  # regulation article
+        is_trigger = (header_match or ins_match or reg_match
+                      or (in_table and not stripped.startswith('|')))
 
         if is_trigger and buf:
-            path_parts = [v for v in current_headings.values() if v]
-            if current_clause:
-                path_parts.append(current_clause)
-            path_str = " -> ".join(path_parts)
-            chunk_text = "\n".join(buf)
-            enriched = f"【文件ID: {doc_id} | 路径: {path_str}】\n{chunk_text}"
-            chunks.append({"text": enriched, "path": path_str, "raw_len": len(chunk_text)})
+            _build_chunk(chunks, current_headings, current_clause, buf, doc_id)
             buf = []
 
         if header_match:
@@ -78,8 +82,10 @@ def preprocess_and_chunk_md(text: str, doc_id: str) -> list[dict]:
             for l in range(level + 1, 4):
                 current_headings[l] = ""
             current_clause = ""
-        elif clause_match:
-            current_clause = f"{clause_match.group(1)} {clause_match.group(2)}"
+        elif ins_match:
+            current_clause = f"{ins_match.group(1)} {ins_match.group(2)}"
+        elif reg_match:
+            current_clause = f"第{reg_match.group(1)}条 {reg_match.group(2)[:15]}"
 
         if stripped.startswith('|'):
             in_table = True
@@ -88,39 +94,58 @@ def preprocess_and_chunk_md(text: str, doc_id: str) -> list[dict]:
 
         buf.append(line)
 
-    # Final chunk
     if buf:
-        path_parts = [v for v in current_headings.values() if v]
-        if current_clause:
-            path_parts.append(current_clause)
-        path_str = " -> ".join(path_parts)
-        chunk_text = "\n".join(buf)
-        enriched = f"【文件ID: {doc_id} | 路径: {path_str}】\n{chunk_text}"
-        chunks.append({"text": enriched, "path": path_str, "raw_len": len(chunk_text)})
+        _build_chunk(chunks, current_headings, current_clause, buf, doc_id)
 
     return chunks
 
 
+def _build_chunk(chunks: list, headings: dict, clause: str, buf: list, doc_id: str):
+    """Assemble a chunk with dual-track text."""
+    path_parts = [v for v in headings.values() if v]
+    if clause:
+        path_parts.append(clause)
+    path_str = " -> ".join(path_parts)
+
+    raw_text = "\n".join(buf)
+    text_for_llm = f"【文档ID: {doc_id} | 路径: {path_str}】\n{raw_text}"
+
+    # Search track: strip <br>, markdown symbols, for clean jieba matching
+    import re
+    text_for_search = text_for_llm.replace("<br>", " ").replace("<br />", " ")
+    text_for_search = re.sub(r'[\|#\*\-\[\]]', ' ', text_for_search)
+
+    chunks.append({
+        "text": text_for_llm,
+        "search_text": text_for_search,
+        "path": path_str,
+    })
+
+
 def build_keyword_index(doc_id: str, text: str, domain: str | None = None,
                         pdf_backend: str = "pymupdf") -> dict:
-    """Build keyword index entries for a single document.
+    """Build keyword index with dual-track entries.
 
-    pymupdf4llm/mineru: heading-aware chunking with ancestor path injection.
-    pymupdf (legacy raw): domain-aware smart splitting.
+    pymupdf4llm/mineru: heading-aware chunking, ancestor path injection, dual-track.
+    pymupdf (legacy): domain-aware raw text splitting.
     """
     if pdf_backend == "pymupdf" and domain:
         from agent.preprocessor import split_paragraphs_pymupdf
         paragraphs_raw = split_paragraphs_pymupdf(text, domain)
-        paragraphs = [{"text": p} for p in paragraphs_raw]
+        paragraphs = [{"text": p, "search_text": p, "path": ""} for p in paragraphs_raw]
     else:
         paragraphs = preprocess_and_chunk_md(text, doc_id)
 
     entries = []
     for i, para in enumerate(paragraphs):
-        clean = _strip_markdown_noise(para["text"]).strip()
-        if len(clean) < 10:
+        search = para.get("search_text", para["text"])
+        if len(search.strip()) < 10:
             continue
-        entries.append({"para_id": i, "text": para["text"]})
+        entries.append({
+            "para_id": i,
+            "text": para["text"],
+            "search_text": para.get("search_text", para["text"]),
+        })
     return {doc_id: entries}
 
 

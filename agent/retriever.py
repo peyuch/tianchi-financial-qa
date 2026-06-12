@@ -93,8 +93,9 @@ def stage1_retrieve(index: dict, doc_ids: list[str], question: str,
         doc_results = []
         for kw in keywords:
             for entry in index[doc_id]:
-                clean_text = _clean_for_keywords(entry["text"]).lower()
-                if kw.lower() in clean_text:
+                # Use search_text for matching (stripped of markdown noise)
+                haystack = entry.get("search_text", entry["text"]).lower()
+                if kw.lower() in haystack:
                     key = (doc_id, entry["para_id"])
                     if key not in seen:
                         seen.add(key)
@@ -114,7 +115,8 @@ def stage1_retrieve(index: dict, doc_ids: list[str], question: str,
         target_metrics = _METRIC_NAMES
     for doc_results in doc_results_list:
         for r in doc_results:
-            score = sum(1 for m in target_metrics if m in r["text"])
+            haystack = r.get("search_text", r["text"])
+            score = sum(1 for m in target_metrics if m in haystack)
             r["_score"] = score
         doc_results.sort(key=lambda r: r.get("_score", 0), reverse=True)
         # Keep only top per_doc_quota
