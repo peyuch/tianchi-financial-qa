@@ -30,107 +30,97 @@ def _strip_markdown_noise(text: str) -> str:
     return re.sub(r'[|#*>\-]+', ' ', text)
 
 
-def _is_markdown_table(lines: list[str]) -> bool:
-    """Check if a block of lines is a markdown table."""
-    pipe_lines = [l for l in lines if l.strip().startswith("|")]
-    return len(pipe_lines) >= 2 and any("---" in l for l in lines)
+def preprocess_and_chunk_md(text: str, doc_id: str) -> list[dict]:
+    """Heading-aware chunking with ancestor path injection.
+
+    Produces self-describing chunks where each paragraph is prefixed with
+    its full heading hierarchy, dramatically improving BM25 keyword recall
+    for deeply nested clauses (e.g., insurance policy articles).
+    """
+    import re
+
+    # ── STEP 1: Noise cleaning ──
+    text = re.sub(r'\*\*==> picture \[\d+ x \d+\] intentionally omitted <==\*\*', '', text)
+    text = re.sub(r'[•●─]', '', text)
+    text = re.sub(r'-\s*\[(.*?)\]', r'- \1', text)
+
+    # ── STEP 2: Heading-aware state-machine chunking ──
+    lines = text.split('\n')
+    chunks = []
+    current_headings = {1: "", 2: "", 3: ""}
+    current_clause = ""
+    buf = []
+    in_table = False
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        header_match = re.match(r'^(#{1,3})\s+(.*)', stripped)
+        clause_match = re.match(r'^-\s*(\d+\.\d+)\s+(.*)', stripped)
+
+        is_trigger = header_match or clause_match or (in_table and not stripped.startswith('|'))
+
+        if is_trigger and buf:
+            path_parts = [v for v in current_headings.values() if v]
+            if current_clause:
+                path_parts.append(current_clause)
+            path_str = " -> ".join(path_parts)
+            chunk_text = "\n".join(buf)
+            enriched = f"【文件ID: {doc_id} | 路径: {path_str}】\n{chunk_text}"
+            chunks.append({"text": enriched, "path": path_str, "raw_len": len(chunk_text)})
+            buf = []
+
+        if header_match:
+            level = len(header_match.group(1))
+            current_headings[level] = header_match.group(2).strip()
+            for l in range(level + 1, 4):
+                current_headings[l] = ""
+            current_clause = ""
+        elif clause_match:
+            current_clause = f"{clause_match.group(1)} {clause_match.group(2)}"
+
+        if stripped.startswith('|'):
+            in_table = True
+        elif in_table:
+            in_table = False
+
+        buf.append(line)
+
+    # Final chunk
+    if buf:
+        path_parts = [v for v in current_headings.values() if v]
+        if current_clause:
+            path_parts.append(current_clause)
+        path_str = " -> ".join(path_parts)
+        chunk_text = "\n".join(buf)
+        enriched = f"【文件ID: {doc_id} | 路径: {path_str}】\n{chunk_text}"
+        chunks.append({"text": enriched, "path": path_str, "raw_len": len(chunk_text)})
+
+    return chunks
 
 
 def build_keyword_index(doc_id: str, text: str, domain: str | None = None,
                         pdf_backend: str = "pymupdf") -> dict:
     """Build keyword index entries for a single document.
 
-    PyMuPDF4LLM/MinerU: markdown-aware splitting — keeps tables whole.
-    PyMuPDF legacy: domain-aware smart splitting for raw text.
+    pymupdf4llm/mineru: heading-aware chunking with ancestor path injection.
+    pymupdf (legacy raw): domain-aware smart splitting.
     """
     if pdf_backend == "pymupdf" and domain:
         from agent.preprocessor import split_paragraphs_pymupdf
-        paragraphs = split_paragraphs_pymupdf(text, domain)
+        paragraphs_raw = split_paragraphs_pymupdf(text, domain)
+        paragraphs = [{"text": p} for p in paragraphs_raw]
     else:
-        # Markdown-aware splitting: keep tables together, split by headings/blanks
-        lines = text.split("\n")
-        paragraphs = []
-        buf = []
-        for line in lines:
-            stripped = line.rstrip()
-            # Table continuation: | at line start → accumulate
-            if stripped.lstrip().startswith("|"):
-                buf.append(stripped)
-                continue
-            # Empty line → flush buffer as a paragraph
-            if not stripped.strip():
-                if buf:
-                    paragraphs.append("\n".join(buf))
-                    buf = []
-                continue
-            # Heading → flush previous, start new
-            if stripped.lstrip().startswith("#"):
-                if buf:
-                    paragraphs.append("\n".join(buf))
-                buf = [stripped]
-                continue
-            # Content line → accumulate
-            buf.append(stripped)
-
-        if buf:
-            paragraphs.append("\n".join(buf))
-
-        # ── Domain-aware chunk sizing for non-table paragraphs ──
-        max_chars = {
-            'financial_reports': 2500,
-            'financial_contracts': 2000,
-            'research': 2000,
-            'insurance': 1500,
-            'regulatory': 1000,
-        }.get(domain or "", 1500)
-
-        final = []
-        for p in paragraphs:
-            lines_in_p = p.split("\n")
-            if _is_markdown_table(lines_in_p):
-                # Keep tables whole unless truly enormous (>6000 chars)
-                if len(p) <= 6000:
-                    final.append(p)
-                else:
-                    # Split mega-table at row boundaries (every ~20 pipe rows)
-                    pipe_rows = [l for l in lines_in_p if l.strip().startswith("|")]
-                    chunk_rows = []
-                    chunk_len = 0
-                    for i, row in enumerate(pipe_rows):
-                        chunk_rows.append(row)
-                        chunk_len += len(row)
-                        if chunk_len > 3000 and i > 1:
-                            # Include header row in each chunk
-                            header = pipe_rows[0] if pipe_rows[0] else ""
-                            final.append(header + "\n" + "\n".join(chunk_rows))
-                            chunk_rows = [pipe_rows[0]] if pipe_rows[0] else []
-                            chunk_len = 0
-                    if chunk_rows:
-                        final.append("\n".join(chunk_rows))
-            elif len(p) <= max_chars:
-                final.append(p)
-            else:
-                # Split long text paragraph at sentence boundaries
-                import re
-                sentences = re.split(r'(?<=[。；\n])', p)
-                chunk, chunk_len = [], 0
-                for s in sentences:
-                    if chunk_len + len(s) > max_chars and chunk:
-                        final.append("".join(chunk))
-                        chunk, chunk_len = [s], len(s)
-                    else:
-                        chunk.append(s)
-                        chunk_len += len(s)
-                if chunk:
-                    final.append("".join(chunk))
-
-        paragraphs = final
+        paragraphs = preprocess_and_chunk_md(text, doc_id)
 
     entries = []
     for i, para in enumerate(paragraphs):
-        if len(_strip_markdown_noise(para).strip()) < 10:
+        clean = _strip_markdown_noise(para["text"]).strip()
+        if len(clean) < 10:
             continue
-        entries.append({"para_id": i, "text": para})
+        entries.append({"para_id": i, "text": para["text"]})
     return {doc_id: entries}
 
 
