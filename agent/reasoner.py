@@ -62,7 +62,7 @@ def parse_reasoning_response(content: str, answer_format: str) -> dict:
     # ── Always derive answer from individual option judgments ──
     # Never trust the LLM's "answer" field — option judgments and
     # aggregated answer often disagree (Option Judge ≠ Aggregator).
-    answer = _derive_answer_from_judgments(results, answer_format)
+    answer = _derive_answer_from_judgments(results, answer_format, content)
 
     return {
         "answer": answer,
@@ -71,14 +71,18 @@ def parse_reasoning_response(content: str, answer_format: str) -> dict:
     }
 
 
-def _derive_answer_from_judgments(results: list[dict], answer_format: str) -> str:
+def _derive_answer_from_judgments(results: list[dict], answer_format: str,
+                                  raw_content: str = "") -> str:
     """Programmatically derive final answer from per-option judgments.
 
-    Avoids the "Option Judge ≠ Final Aggregator" problem where the LLM
-    correctly judges individual options but puts wrong answer in JSON.
+    Handles both "找正确的" and "找错误的" question types by checking
+    the raw question text for negative query keywords.
     """
     if not results:
         return ""
+
+    # Detect negative query: "下列说法错误的是" / "不正确的是"
+    is_negative = any(kw in raw_content for kw in ['错误的是', '不正确', '不符合', '不属于'])
 
     correct_opts = []
     weak_opts = []
@@ -86,8 +90,12 @@ def _derive_answer_from_judgments(results: list[dict], answer_format: str) -> st
         judgment = str(r.get("judgment", ""))
         option = str(r.get("option", "")).upper()
         confidence = r.get("confidence", 0)
-        if "正确" in judgment:
-            if confidence >= 0.3:  # lowered from 0.6 — model gives low conf even with evidence
+
+        # For negative queries: "错误" IS the correct selection
+        target = "错误" if is_negative else "正确"
+
+        if target in judgment:
+            if confidence >= 0.3:
                 correct_opts.append(option)
             else:
                 weak_opts.append(option)
