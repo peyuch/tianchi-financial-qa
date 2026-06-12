@@ -530,7 +530,7 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
     _amount_patterns = re.findall(r'(?:不超过|上限|下限|规模|金额).{0,10}\d+[万亿千百]', _opt_text)
     _all_raw_phrases = _num_phrases + _amount_patterns
 
-    if _all_raw_phrases:
+    if _all_raw_phrases and len(top) < 25:
         import os as _os
         from config import PROCESSED_DIR as _PDIR
         _already = {e['text'][:100] for e in top}
@@ -540,22 +540,23 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
                 continue
             with open(_md_path, 'r', encoding='utf-8') as _f:
                 _raw = _f.read()
+            _hits_in_doc = 0
             for _pat in _all_raw_phrases:
+                if _hits_in_doc >= 3:
+                    break
                 for _m in re.finditer(re.escape(_pat), _raw):
-                    _start = max(0, _m.start() - 300)
-                    _end = min(len(_raw), _m.end() + 500)
+                    if _hits_in_doc >= 3:
+                        break
+                    _start = max(0, _m.start() - 200)
+                    _end = min(len(_raw), _m.end() + 400)
                     _ctx = _raw[_start:_end].strip()
                     if _ctx[:100] not in _already and len(_ctx) > 30:
-                        top.append({
-                            'doc_id': did,
-                            'para_id': -1,
-                            'text': _ctx,
-                            'search_text': _ctx,
+                        top.insert(0, {
+                            'doc_id': did, 'para_id': -1,
+                            'text': _ctx, 'search_text': _ctx,
                         })
                         _already.add(_ctx[:100])
-                        break  # one match per pattern per doc
-                if len(top) > 30:  # safety cap
-                    break
+                        _hits_in_doc += 1
 
     # ── Golden hints forced inclusion ──
     _seen_hint_texts = {e['text'][:100] for e in top}
