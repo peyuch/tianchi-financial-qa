@@ -482,7 +482,10 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
     # ── Numeric density filter ──
     # Detect if any option has quantitative intent (金额, 规模, 上限, 比例, etc.)
     _NUMERIC_INTENT_WORDS = {'金额', '规模', '上限', '下限', '比例', '价格',
-                              '利率', '费用', '低于', '超过', '占.*比例', '增速'}
+                              '利率', '费用', '低于', '超过', '占.*比例', '增速',
+                              # Optimization 6: time/regulatory terms
+                              '工作日', '天内', '个月', '年内', '届满', '之日起',
+                              '年满', '满.*年', '日以上', '年以下', '年以', '日起'}
     _has_numeric_intent = any(
         re.search(w, _opt_text) for w in _NUMERIC_INTENT_WORDS
     )
@@ -529,6 +532,19 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
             top.insert(0, gh)  # prepend for maximum LLM attention
             _seen_hint_texts.add(gh['text'][:100])
             _hints_added += 1
+
+    # ── Optimization 5: Per-document independent Top-3 minimum ──
+    # For multi-doc questions, guarantee at least 3 chunks from EACH document
+    if expected_doc_ids and len(expected_doc_ids) >= 2:
+        for did in expected_doc_ids:
+            doc_chunks = [c for c in candidates if c.get("doc_id") == did]
+            already_in_top = [c for c in top if c.get("doc_id") == did]
+            if len(already_in_top) < 3:
+                need = 3 - len(already_in_top)
+                for dc in doc_chunks:
+                    if dc not in top and need > 0:
+                        top.append(dc)
+                        need -= 1
 
     # Document-balanced rebalancing: allocate equal slots per document
     max_docs = len(expected_doc_ids) if expected_doc_ids else 1
