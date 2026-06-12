@@ -522,8 +522,8 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
         "input_tokens": response["input_tokens"],
         "output_tokens": response["output_tokens"],
     }
-    # ── Optimization 8: FC domain — force first 3 chunks (issuer/amount/rating) ──
-    if domain == 'financial_contracts':
+    # ── Optimization 8: FC domain — force first 3 chunks per doc ──
+    if expected_doc_ids and any(d.startswith('text') for d in expected_doc_ids):
         for did in (expected_doc_ids or []):
             doc_chunks = [c for c in candidates if c.get("doc_id") == did]
             doc_chunks.sort(key=lambda c: c.get("para_id", 999))
