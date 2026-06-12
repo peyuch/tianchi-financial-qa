@@ -522,15 +522,12 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
         "input_tokens": response["input_tokens"],
         "output_tokens": response["output_tokens"],
     }
-    # ── Optimization 9 (upgraded): Direct raw document scan for numeric phrases ──
-    # When jieba-indexed candidates miss phrase+number combos, fall back to
-    # regex-scanning the original .md files to find paragraphs with exact phrase-number co-occurrence
-    _num_phrases = re.findall(r'\d+个工作日|\d+个月|\d+日内|\d+天内|满\d+年', _opt_text)
-    # Also extract option-level numeric patterns: "不超过X亿", "发行金额上限"
-    _amount_patterns = re.findall(r'(?:不超过|上限|下限|规模|金额).{0,10}\d+[万亿千百]', _opt_text)
-    _all_raw_phrases = _num_phrases + _amount_patterns
-
-    if _all_raw_phrases and len(top) < 25:
+    # ── Optimization 9: Direct raw doc scan for numeric financial terms ──
+    # For FC/reg domains with numeric intent, bypass jieba index and scan
+    # raw .md files for metric terms co-occurring with numbers
+    _FINANCIAL_NUMERIC_TERMS = ['发行金额', '发行规模', '募集资金', '发行总额',
+                                '本期发行', '发行上限', '债券期限', '票面利率']
+    if _has_numeric_intent and len(top) < 25:
         import os as _os
         from config import PROCESSED_DIR as _PDIR
         _already = {e['text'][:100] for e in top}
@@ -541,19 +538,21 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
             with open(_md_path, 'r', encoding='utf-8') as _f:
                 _raw = _f.read()
             _hits_in_doc = 0
-            for _pat in _all_raw_phrases:
-                if _hits_in_doc >= 3:
+            for _term in _FINANCIAL_NUMERIC_TERMS:
+                if _hits_in_doc >= 2:
                     break
-                for _m in re.finditer(re.escape(_pat), _raw):
-                    if _hits_in_doc >= 3:
+                # Find _term followed by a number within 50 chars
+                for _m in re.finditer(_term + r'.{0,50}?\d+[万亿千百亿]?', _raw):
+                    if _hits_in_doc >= 2:
                         break
-                    _start = max(0, _m.start() - 200)
-                    _end = min(len(_raw), _m.end() + 400)
+                    _start = max(0, _m.start() - 100)
+                    _end = min(len(_raw), _m.end() + 300)
                     _ctx = _raw[_start:_end].strip()
                     if _ctx[:100] not in _already and len(_ctx) > 30:
                         top.insert(0, {
                             'doc_id': did, 'para_id': -1,
-                            'text': _ctx, 'search_text': _ctx,
+                            'text': f'[RAW SCAN] {_ctx}',
+                            'search_text': _ctx,
                         })
                         _already.add(_ctx[:100])
                         _hits_in_doc += 1
