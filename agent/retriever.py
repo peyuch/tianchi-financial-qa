@@ -533,18 +533,19 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
             _seen_hint_texts.add(gh['text'][:100])
             _hints_added += 1
 
-    # ── Optimization 5: Per-document independent Top-3 minimum ──
-    # For multi-doc questions, guarantee at least 3 chunks from EACH document
+    # ── Optimization 5: Per-document Top-3 minimum ──
+    # For multi-doc questions, if any doc has <3 in evidence, inject its best unscored
     if expected_doc_ids and len(expected_doc_ids) >= 2:
         for did in expected_doc_ids:
-            doc_chunks = [c for c in candidates if c.get("doc_id") == did]
             already_in_top = [c for c in top if c.get("doc_id") == did]
             if len(already_in_top) < 3:
+                scored_candidates = sorted(
+                    [c for c in candidates if c.get("doc_id") == did and c not in top],
+                    key=lambda c: c.get("_score", 0), reverse=True
+                )
                 need = 3 - len(already_in_top)
-                for dc in doc_chunks:
-                    if dc not in top and need > 0:
-                        top.append(dc)
-                        need -= 1
+                for dc in scored_candidates[:need]:
+                    top.append(dc)
 
     # Document-balanced rebalancing: allocate equal slots per document
     max_docs = len(expected_doc_ids) if expected_doc_ids else 1
