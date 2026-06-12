@@ -1,7 +1,13 @@
 """Retriever: Stage 1 keyword-based + Stage 2 Qwen fine-grained filtering."""
+import os
 import re
 import jieba
 from collections import OrderedDict
+
+# Load finance/legal custom dictionary to prevent compound terms from being fragmented
+_dict_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "finance_dict.txt")
+if os.path.exists(_dict_path):
+    jieba.load_userdict(_dict_path)
 from agent.qwen_client import QwenClient, build_chat_message
 
 # Chinese stop words to filter out from keywords
@@ -321,22 +327,27 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
     numbers = re.findall(r'\d+', content)
     ranked_ids = [int(n) for n in numbers if int(n) < len(candidates)]
 
-    top5 = []
+    # Dynamic top-N: cross-doc/comparison questions need more evidence
+    n_docs = len({c.get("doc_id", "") for c in candidates})
+    max_docs = len(expected_doc_ids) if expected_doc_ids else 1
+    top_n = 12 if max_docs >= 2 else 5
+
+    top = []
     seen = set()
-    for idx in ranked_ids[:5]:
+    for idx in ranked_ids[:top_n]:
         if idx not in seen:
             seen.add(idx)
-            top5.append(candidates[idx])
+            top.append(candidates[idx])
 
     # Ensure each expected document is covered
     if expected_doc_ids and len(expected_doc_ids) > 1:
-        top5 = _ensure_doc_coverage(top5, candidates, expected_doc_ids, max_total=5)
+        top = _ensure_doc_coverage(top, candidates, expected_doc_ids, max_total=top_n + 3)
 
     token_usage = {
         "input_tokens": response["input_tokens"],
         "output_tokens": response["output_tokens"],
     }
-    return top5, token_usage
+    return top, token_usage
 
 
 def should_skip_stage2(candidates: list[dict], question: str) -> bool:
