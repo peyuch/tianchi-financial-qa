@@ -522,14 +522,39 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
         "input_tokens": response["input_tokens"],
         "output_tokens": response["output_tokens"],
     }
-    # ── Optimization 9: Regex scan for advanced number phrases ──
+    # ── Optimization 9 (upgraded): Direct raw document scan for numeric phrases ──
+    # When jieba-indexed candidates miss phrase+number combos, fall back to
+    # regex-scanning the original .md files to find paragraphs with exact phrase-number co-occurrence
     _num_phrases = re.findall(r'\d+个工作日|\d+个月|\d+日内|\d+天内|满\d+年', _opt_text)
-    if _num_phrases:
-        for c in candidates:
-            for np in _num_phrases:
-                if np in c.get("search_text", c["text"]):
-                    if c['text'][:100] not in {e['text'][:100] for e in top}:
-                        top.insert(0, c)
+    # Also extract option-level numeric patterns: "不超过X亿", "发行金额上限"
+    _amount_patterns = re.findall(r'(?:不超过|上限|下限|规模|金额).{0,10}\d+[万亿千百]', _opt_text)
+    _all_raw_phrases = _num_phrases + _amount_patterns
+
+    if _all_raw_phrases:
+        import os as _os
+        from config import PROCESSED_DIR as _PDIR
+        _already = {e['text'][:100] for e in top}
+        for did in (expected_doc_ids or []):
+            _md_path = _os.path.join(_PDIR, f'{did}.md')
+            if not _os.path.exists(_md_path):
+                continue
+            with open(_md_path, 'r', encoding='utf-8') as _f:
+                _raw = _f.read()
+            for _pat in _all_raw_phrases:
+                for _m in re.finditer(re.escape(_pat), _raw):
+                    _start = max(0, _m.start() - 300)
+                    _end = min(len(_raw), _m.end() + 500)
+                    _ctx = _raw[_start:_end].strip()
+                    if _ctx[:100] not in _already and len(_ctx) > 30:
+                        top.append({
+                            'doc_id': did,
+                            'para_id': -1,
+                            'text': _ctx,
+                            'search_text': _ctx,
+                        })
+                        _already.add(_ctx[:100])
+                        break  # one match per pattern per doc
+                if len(top) > 30:  # safety cap
                     break
 
     # ── Golden hints forced inclusion ──
