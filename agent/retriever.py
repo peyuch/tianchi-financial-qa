@@ -339,7 +339,7 @@ def _ensure_doc_coverage(evidence: list[dict], candidates: list[dict],
 
 
 def expand_evidence(evidence: list[dict], keyword_index: dict,
-                    expand_by: int = 1) -> list[dict]:
+                    expand_by: int = 1, domain: str | None = None) -> list[dict]:
     """Bi-directional context expansion.
 
     For each evidence paragraph, includes ±N adjacent paragraphs.
@@ -363,7 +363,10 @@ def expand_evidence(evidence: list[dict], keyword_index: dict,
                               or re.match(r'^\s*[a-z][.)]', text, re.IGNORECASE))
 
         offsets_to_try = []
-        if is_subordinate:
+        # Instruction 2: res/fc domains expand ±1 for all evidence
+        if domain in ('research', 'financial_contracts'):
+            offsets_to_try = [-1, 1]
+        elif is_subordinate:
             offsets_to_try = [-1, 1]  # Pull both preceding main clause + next
         else:
             offsets_to_try = [1]  # Only pull next
@@ -431,9 +434,26 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
     numbers = re.findall(r'\d+', content)
     ranked_ids = [int(n) for n in numbers if int(n) < len(candidates)]
 
+    # ── Instruction 1: Option-driven targeted feature matching ──
+    # Extract all numbers and key entities from options text
+    _option_features = set()
+    _opt_text = " ".join(options.values())
+    for num in re.findall(r'\d+\.?\d*[万亿千百%％]*', _opt_text):
+        _option_features.add(num)
+    for entity in re.findall(r'[一-鿿]{2,6}(?:证券|银行|保险|基金|股份|集团|管理办法|指引|准则)', _opt_text):
+        _option_features.add(entity)
+
+    # Scan candidates for golden hints
+    _golden_hints = []
+    for i, c in enumerate(candidates):
+        for feat in _option_features:
+            if feat in c.get("search_text", c["text"]):
+                _golden_hints.append(c)
+                break  # one match is enough
+
     # Dynamic top-N: more docs = more evidence needed
     max_docs = len(expected_doc_ids) if expected_doc_ids else 1
-    top_n = 15 if max_docs >= 3 else (12 if max_docs >= 2 else 8)  # 1-doc:8, 2-doc:12, 3+:15
+    top_n = 15 if max_docs >= 3 else (12 if max_docs >= 2 else 8)
 
     top = []
     seen = set()
@@ -450,6 +470,14 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
         "input_tokens": response["input_tokens"],
         "output_tokens": response["output_tokens"],
     }
+    # ── Instruction 1 (continued): Force golden hints into evidence ──
+    # Golden hints get guaranteed inclusion, immune to filtering
+    _seen_hint_texts = {e['text'][:100] for e in top}
+    for gh in _golden_hints:
+        if gh['text'][:100] not in _seen_hint_texts:
+            top.insert(0, gh)  # prepend for maximum LLM attention
+            _seen_hint_texts.add(gh['text'][:100])
+
     # Document-balanced rebalancing: allocate equal slots per document
     max_docs = len(expected_doc_ids) if expected_doc_ids else 1
     if max_docs >= 2 and len(top) > max_docs:

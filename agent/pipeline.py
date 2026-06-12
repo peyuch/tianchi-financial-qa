@@ -133,7 +133,7 @@ def run_pipeline(
             evidence = candidates[:5]
 
         # Expand evidence: for each selected paragraph, also include its next paragraph
-        evidence = expand_evidence(evidence, keyword_index, expand_by=1)
+        evidence = expand_evidence(evidence, keyword_index, expand_by=1, domain=domain)
 
         # Apply per-doc allocation for insurance domain
         if domain == "insurance":

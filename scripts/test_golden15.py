@@ -117,7 +117,7 @@ for i, q in enumerate(questions):
     else:
         evidence = candidates[:5]
 
-    evidence = expand_evidence(evidence, keyword_index, expand_by=1)
+    evidence = expand_evidence(evidence, keyword_index, expand_by=1, domain=domain)
     if domain == "insurance":
         evidence = allocate_per_doc(evidence, per_doc_cap=domain_config["per_doc_cap"], max_docs=domain_config["max_docs"])
 
