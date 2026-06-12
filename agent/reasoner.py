@@ -198,6 +198,75 @@ def extract_facts(client: QwenClient, doc_id: str, doc_text: str,
     }
 
 
+def reason_with_voting(client: QwenClient, evidence: list[dict], question: str,
+                       options: dict, prompt_name: str, answer_format: str,
+                       n_votes: int = 3) -> dict:
+    """Run reasoning N times, aggregate per-option by majority vote.
+
+    Eliminates the sequential bias of multi-choice by voting on each
+    option independently across multiple runs. An option is selected
+    only if ≥2 out of N runs judge it as 正确.
+    """
+    from collections import Counter
+
+    all_judgments = {opt: [] for opt in options}
+    total_tokens = {"input": 0, "output": 0}
+    last_result = None
+
+    for run_i in range(n_votes):
+        # Slight temperature variation to get diverse judgments
+        result = _reason_single(client, evidence, question, options, prompt_name,
+                                answer_format, temperature=0.1 if run_i > 0 else 0)
+        total_tokens["input"] += result.get("input_tokens", 0)
+        total_tokens["output"] += result.get("output_tokens", 0)
+        last_result = result
+
+        for r in result.get("results", []):
+            opt = str(r.get("option", "")).upper()
+            judgment = "正确" if "正确" in str(r.get("judgment", "")) else "错误"
+            if opt in all_judgments:
+                all_judgments[opt].append(judgment)
+
+    # Per-option majority: ≥ ceil(N/2) "正确" → include
+    threshold = (n_votes + 1) // 2  # 2 for N=3, 3 for N=4-5
+    voted_results = []
+    for opt, judgments in sorted(all_judgments.items()):
+        correct_count = sum(1 for j in judgments if j == "正确")
+        voted_results.append({
+            "option": opt,
+            "judgment": "正确" if correct_count >= threshold else "错误",
+            "confidence": correct_count / len(judgments) if judgments else 0,
+            "votes": judgments,
+        })
+
+    answer = _derive_answer_from_judgments(voted_results, answer_format)
+
+    return {
+        "answer": answer,
+        "results": voted_results,
+        "input_tokens": total_tokens["input"],
+        "output_tokens": total_tokens["output"],
+        "_voted": True,
+        "_n_votes": n_votes,
+    }
+
+
+def _reason_single(client: QwenClient, evidence: list[dict], question: str,
+                   options: dict, prompt_name: str, answer_format: str,
+                   temperature: float = 0) -> dict:
+    """Single reasoning call with configurable temperature (for voting)."""
+    prompt = build_reasoning_prompt(prompt_name, evidence, question, options)
+    response = client.chat(
+        messages=[build_chat_message("user", prompt)],
+        temperature=temperature,
+        max_tokens=4096,
+    )
+    result = parse_reasoning_response(response["content"], answer_format)
+    result["input_tokens"] = response["input_tokens"]
+    result["output_tokens"] = response["output_tokens"]
+    return result
+
+
 def reason_with_compression(client: QwenClient, evidence: list[dict],
                             question: str, options: dict, prompt_name: str,
                             answer_format: str, domain: str,
