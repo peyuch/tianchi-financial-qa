@@ -122,14 +122,28 @@ def stage1_retrieve(index: dict, doc_ids: list[str], question: str,
         # Keep only top per_doc_quota
         doc_results[:] = doc_results[:per_doc_quota]
 
-    # Interleave results from different docs so truncation doesn't drop later docs
-    max_len = max((len(d) for d in doc_results_list), default=0)
-    for i in range(max_len):
-        for doc_results in doc_results_list:
-            if i < len(doc_results) and len(all_results) < 30:
-                all_results.append(doc_results[i])
+    # Per-doc minimum guarantee: at least min_per_doc from each document
+    min_per_doc = max(5, 30 // max(1, len(doc_ids) * 2))
+    guaranteed = []
+    for doc_results in doc_results_list:
+        guaranteed.extend(doc_results[:min_per_doc])
 
-    return all_results[:30]  # Don't truncate — let downstream decide
+    # Interleave remaining results for balanced coverage
+    remaining_slots = 30 - len(guaranteed)
+    max_len = max((len(d) for d in doc_results_list), default=0)
+    interleaved = []
+    seen_keys = {(r['doc_id'], r['para_id']) for r in guaranteed}
+    for i in range(min_per_doc, max_len):
+        for doc_results in doc_results_list:
+            if i < len(doc_results) and len(interleaved) < remaining_slots:
+                r = doc_results[i]
+                key = (r['doc_id'], r['para_id'])
+                if key not in seen_keys:
+                    seen_keys.add(key)
+                    interleaved.append(r)
+
+    all_results = guaranteed + interleaved
+    return all_results[:30]
 
 
 def allocate_per_doc(evidence: list[dict], per_doc_cap: int,

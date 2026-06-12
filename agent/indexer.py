@@ -31,95 +31,153 @@ def _strip_markdown_noise(text: str) -> str:
 
 
 def preprocess_and_chunk_md(text: str, doc_id: str) -> list[dict]:
-    """Multi-domain adaptive chunking with ancestor path injection.
+    """Multi-domain adaptive chunking with table semantic flattening.
 
-    Produces dual-track chunks:
-    - text_for_llm: full markdown with path prefix (for Qwen)
-    - text_for_search: cleaned plain text, <br>→spaces, symbols stripped (for jieba)
+    - Table rows: sub-chunked every 8 rows, headers injected into each chunk
+    - Cross-page header inheritance
+    - Year+metric compound search terms (e.g. "2025年营业收入")
+    - Dual-track output: text (markdown + path) / search_text (cleaned, dense terms)
     """
     import re
 
     # ── STEP 1: Global noise cleaning ──
-    # Remove picture text blocks (research reports)
     text = re.sub(
         r'\*\*-----\s*Start of picture text\s*-----\*\*(?:<br>)?[\s\S]*?'
         r'\*\*-----\s*End of picture text\s*-----\*\*(?:<br>)?', '', text
     )
-    # Remove image placeholders
     text = re.sub(r'\*\*==> picture \[\d+ x \d+\] intentionally omitted <==\*\*', '', text)
-    # Erase Wingdings garbage
     text = re.sub(r'[•●─]', '', text)
-    # Unwrap bracket-wrapped lines
     text = re.sub(r'-\s*\[(.*?)\]', r'- \1', text)
 
     # ── STEP 2: State-machine chunking ──
     lines = text.split('\n')
     chunks = []
-    current_headings = {1: "", 2: "", 3: ""}
+    current_section = ""
     current_clause = ""
-    buf = []
+    current_statute = ""
+    table_buffer = []
+    last_known_table_header = None
     in_table = False
+    text_buffer = []
+
+    def _emit_text():
+        nonlocal text_buffer
+        if not text_buffer:
+            return
+        raw_md = '\n'.join(text_buffer).strip()
+        text_buffer = []
+        if len(raw_md) < 5:
+            return
+        path_prefix = f"【文档ID: {doc_id} | 路径: {current_section} -> {current_clause or current_statute or '正文'}】\n"
+        search_text = raw_md.replace('<br>', ' ').replace('<br />', ' ')
+        search_text = re.sub(r'[^a-zA-Z0-9一-龥\s]', ' ', search_text)
+        chunks.append({
+            "text": path_prefix + raw_md,
+            "search_text": " ".join(search_text.split()),
+            "path": current_section,
+        })
+
+    def _emit_table():
+        nonlocal table_buffer, last_known_table_header
+        t_lines = list(table_buffer)
+        table_buffer = []
+        if not t_lines:
+            return
+
+        has_header = len(t_lines) > 1 and '---' in t_lines[1]
+        if has_header:
+            header_lines = t_lines[:2]
+            last_known_table_header = header_lines
+            data_lines = t_lines[2:]
+        elif last_known_table_header:
+            header_lines = last_known_table_header
+            data_lines = t_lines
+        else:
+            header_lines = []
+            data_lines = t_lines
+
+        if not data_lines:
+            return
+
+        # Parse column headers (e.g. ['指标', '2025年', '2024年'])
+        col_headers = []
+        if header_lines:
+            col_headers = [c.strip() for c in header_lines[0].split('|')[1:-1]]
+
+        row_group_size = 8
+        for i in range(0, len(data_lines), row_group_size):
+            sub_data = data_lines[i:i + row_group_size]
+            full_table_md = '\n'.join(header_lines + sub_data) if header_lines else '\n'.join(sub_data)
+            path_prefix = f"【文档ID: {doc_id} | 路径: {current_section} -> 表格数据】\n"
+
+            # Semantic flattening: cross-bind year headers with metric names
+            search_terms = []
+            for row in sub_data:
+                row_cols = [c.strip() for c in row.split('|')[1:-1]]
+                if not row_cols:
+                    continue
+                row_title = row_cols[0]
+                search_terms.append(row_title)
+                for ci, cv in enumerate(row_cols[1:]):
+                    hi = ci + 1
+                    if hi < len(col_headers):
+                        search_terms.append(f"{col_headers[hi]}{row_title}")
+                    search_terms.append(cv)
+
+            flat_search = " ".join(search_terms)
+            flat_search = re.sub(r'[^a-zA-Z0-9一-龥\s]', ' ', flat_search)
+
+            chunks.append({
+                "text": path_prefix + full_table_md,
+                "search_text": " ".join(flat_search.split()),
+                "path": current_section,
+            })
 
     for line in lines:
         stripped = line.strip()
+        is_table_row = stripped.startswith('|') and stripped.endswith('|')
+
+        if is_table_row:
+            if not in_table:
+                _emit_text()
+                in_table = True
+            table_buffer.append(line)
+            continue
+        else:
+            if in_table:
+                _emit_table()
+                in_table = False
+
         if not stripped:
             continue
 
-        # Boundary detectors
         header_match = re.match(r'^(#{1,3})\s+(.*)', stripped)
-        ins_match = re.match(r'^-\s*(\d+\.\d+)\s+(.*)', stripped)   # insurance clause
-        reg_match = re.match(r'^第([一二三四五六七八九十百千\d]+)条\s*(.*)', stripped)  # regulation article
-        is_trigger = (header_match or ins_match or reg_match
-                      or (in_table and not stripped.startswith('|')))
+        ins_match = re.match(r'^-\s*(\d+\.\d+)\s+(.*)', stripped)
+        reg_match = re.match(r'^第([一二三四五六七八九十百千\d]+)条\s*(.*)', stripped)
 
-        if is_trigger and buf:
-            _build_chunk(chunks, current_headings, current_clause, buf, doc_id)
-            buf = []
+        is_trigger = header_match or ins_match or reg_match
+        if is_trigger:
+            _emit_text()
+            text_buffer = [line]
 
         if header_match:
-            level = len(header_match.group(1))
-            current_headings[level] = header_match.group(2).strip()
-            for l in range(level + 1, 4):
-                current_headings[l] = ""
-            current_clause = ""
+            current_section = header_match.group(2).strip()
+            current_clause, current_statute = "", ""
         elif ins_match:
             current_clause = f"{ins_match.group(1)} {ins_match.group(2)}"
+            current_statute = ""
         elif reg_match:
-            current_clause = f"第{reg_match.group(1)}条 {reg_match.group(2)[:15]}"
+            current_statute = f"第{reg_match.group(1)}条 {reg_match.group(2)[:15]}"
+            current_clause = ""
+        elif not is_trigger:
+            text_buffer.append(line)
 
-        if stripped.startswith('|'):
-            in_table = True
-        elif in_table:
-            in_table = False
-
-        buf.append(line)
-
-    if buf:
-        _build_chunk(chunks, current_headings, current_clause, buf, doc_id)
+    if in_table:
+        _emit_table()
+    else:
+        _emit_text()
 
     return chunks
-
-
-def _build_chunk(chunks: list, headings: dict, clause: str, buf: list, doc_id: str):
-    """Assemble a chunk with dual-track text."""
-    path_parts = [v for v in headings.values() if v]
-    if clause:
-        path_parts.append(clause)
-    path_str = " -> ".join(path_parts)
-
-    raw_text = "\n".join(buf)
-    text_for_llm = f"【文档ID: {doc_id} | 路径: {path_str}】\n{raw_text}"
-
-    # Search track: strip <br>, markdown symbols, for clean jieba matching
-    import re
-    text_for_search = text_for_llm.replace("<br>", " ").replace("<br />", " ")
-    text_for_search = re.sub(r'[\|#\*\-\[\]]', ' ', text_for_search)
-
-    chunks.append({
-        "text": text_for_llm,
-        "search_text": text_for_search,
-        "path": path_str,
-    })
 
 
 def build_keyword_index(doc_id: str, text: str, domain: str | None = None,
