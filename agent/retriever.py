@@ -350,8 +350,37 @@ def expand_evidence(evidence: list[dict], keyword_index: dict,
     expanded = list(evidence)
     seen = {(e['doc_id'], e['para_id']) for e in evidence}
 
+    # ── Optimization 2: Table header stitching ──
+    # For table chunks, trace back to find the header row (|---|) and prepend it
     for e in evidence:
         text = e['text']
+        if '|---' in text or text.strip().startswith('|'):
+            entries = keyword_index.get(e['doc_id'], [])
+            # Search backward for the header row
+            for back in range(1, 6):
+                target_id = e['para_id'] - back
+                if target_id < 0:
+                    break
+                for entry in entries:
+                    if entry['para_id'] == target_id:
+                        prev_text = entry['text']
+                        if '|---' in prev_text or (prev_text.strip().startswith('|') and '---' in prev_text):
+                            # Found header — inject it above current chunk
+                            header_lines = []
+                            for line in prev_text.split('\n'):
+                                if line.strip().startswith('|'):
+                                    header_lines.append(line)
+                            if header_lines and (e['doc_id'], target_id) not in seen:
+                                expanded.append({
+                                    'doc_id': e['doc_id'],
+                                    'para_id': target_id,
+                                    'text': '\n'.join(header_lines),
+                                })
+                                seen.add((e['doc_id'], target_id))
+                            break
+                else:
+                    continue
+                break
         doc_id = e['doc_id']
         para_id = e['para_id']
         entries = keyword_index.get(doc_id, [])
@@ -434,14 +463,21 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
     numbers = re.findall(r'\d+', content)
     ranked_ids = [int(n) for n in numbers if int(n) < len(candidates)]
 
-    # ── Instruction 1: Option-driven targeted feature matching ──
-    # Extract all numbers and key entities from options text
+    # ── Instruction 1 (upgraded): Option-driven targeted feature matching ──
+    # Extract numbers + core noun phrases from options, filter generic boilerplate
+    _GENERIC_WORDS = {'文档', '低于', '高于', '描述', '符合', '正确', '第一', '第二',
+                      '两份', '一份', '材料', '以上', '以下', '包括', '是否', '相关'}
     _option_features = set()
     _opt_text = " ".join(options.values())
     for num in re.findall(r'\d+\.?\d*[万亿千百%％]*', _opt_text):
         _option_features.add(num)
     for entity in re.findall(r'[一-鿿]{2,6}(?:证券|银行|保险|基金|股份|集团|管理办法|指引|准则)', _opt_text):
         _option_features.add(entity)
+    # Extract core noun phrases (2-4 chars, not generic)
+    phrases = re.findall(r'[一-鿿]{2,4}', _opt_text)
+    for p in phrases:
+        if p not in _GENERIC_WORDS and p not in ('的','了','在','是','有','和','就','不','人','都','一'):
+            _option_features.add(p)
 
     # Scan candidates for golden hints
     _golden_hints = []
