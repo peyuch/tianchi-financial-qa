@@ -522,17 +522,6 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
         "input_tokens": response["input_tokens"],
         "output_tokens": response["output_tokens"],
     }
-    # ── Optimization 8: FC domain — force first 3 chunks per doc ──
-    if expected_doc_ids and any(d.startswith('text') for d in expected_doc_ids):
-        for did in (expected_doc_ids or []):
-            doc_chunks = [c for c in candidates if c.get("doc_id") == did]
-            doc_chunks.sort(key=lambda c: c.get("para_id", 999))
-            already = {e['text'][:100] for e in top}
-            for dc in doc_chunks[:3]:
-                if dc['text'][:100] not in already:
-                    top.insert(0, dc)
-                    already.add(dc['text'][:100])
-
     # ── Optimization 9: Regex scan for advanced number phrases ──
     _num_phrases = re.findall(r'\d+个工作日|\d+个月|\d+日内|\d+天内|满\d+年', _opt_text)
     if _num_phrases:
