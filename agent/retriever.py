@@ -74,10 +74,44 @@ def _clean_for_keywords(text: str) -> str:
     return re.sub(r'[|#*>\-]+', ' ', text)
 
 
+def stage1_retrieve_per_option(index: dict, doc_ids: list[str], question: str,
+                               options: dict) -> list[dict]:
+    """Per-option independent retrieval + union.
+
+    Retrieves candidates for each option independently (question+option text),
+    then unions results with best-score deduplication. Prevents keywords from
+    different options from diluting each other's retrieval signals.
+    """
+    union_candidates = {}
+    for _opt_label, opt_text in sorted(options.items()):
+        opt_query = f"{question} {opt_text}"
+        opt_results = _stage1_retrieve_single(index, doc_ids, opt_query)
+        for r in opt_results:
+            key = (r["doc_id"], r["para_id"])
+            score = r.get("_score", 0)
+            if key not in union_candidates or score > union_candidates[key].get("_score", 0):
+                union_candidates[key] = r
+
+    results = list(union_candidates.values())
+    results.sort(key=lambda r: r.get("_score", 0), reverse=True)
+    return results[:30]
+
+
 def stage1_retrieve(index: dict, doc_ids: list[str], question: str,
                     options: dict | None = None) -> list[dict]:
-    """Retrieve candidates, allocating quota evenly across documents."""
-    keywords = extract_keywords_from_question(question)
+    """Retrieve candidates.
+
+    When options are provided, uses per-option independent retrieval + union.
+    Otherwise falls back to question-only retrieval.
+    """
+    if options and len(options) >= 2:
+        return stage1_retrieve_per_option(index, doc_ids, question, options)
+    return _stage1_retrieve_single(index, doc_ids, question)
+
+
+def _stage1_retrieve_single(index: dict, doc_ids: list[str], query: str) -> list[dict]:
+    """Core retrieval for a single query string."""
+    keywords = extract_keywords_from_question(query)
     per_doc_quota = max(15, 30 // max(1, len(doc_ids)))
 
     # For financial domains, prepend option-level metrics as high-priority keywords
@@ -97,17 +131,27 @@ def stage1_retrieve(index: dict, doc_ids: list[str], question: str,
         if doc_id not in index:
             continue
         doc_results = []
+        # Tokenize search_text ONCE per entry for set-intersection scoring
+        entry_tokens = {}
+        for entry in index[doc_id]:
+            haystack = entry.get("search_text", entry["text"]).lower()
+            entry_tokens[entry["para_id"]] = set(jieba.lcut(haystack))
+
         for kw in keywords:
+            kw_tokens = set(jieba.lcut(kw.lower()))
             for entry in index[doc_id]:
-                # Use search_text for matching (stripped of markdown noise)
-                haystack = entry.get("search_text", entry["text"]).lower()
-                if kw.lower() in haystack:
-                    key = (doc_id, entry["para_id"])
+                para_id = entry["para_id"]
+                tokens = entry_tokens.get(para_id, set())
+                if not tokens:
+                    continue
+                # Token set intersection: at least one keyword token must match
+                if kw_tokens & tokens:
+                    key = (doc_id, para_id)
                     if key not in seen:
                         seen.add(key)
                         doc_results.append({
                             "doc_id": doc_id,
-                            "para_id": entry["para_id"],
+                            "para_id": para_id,
                             "text": entry["text"],
                         })
             if len(doc_results) >= per_doc_quota * 3:
@@ -254,21 +298,38 @@ def _ensure_doc_coverage(evidence: list[dict], candidates: list[dict],
 
 def expand_evidence(evidence: list[dict], keyword_index: dict,
                     expand_by: int = 1) -> list[dict]:
-    """For each evidence paragraph, also include the next N paragraphs from the same doc.
+    """Bi-directional context expansion.
 
-    Fixes the pattern where Stage 2 selects section headers (e.g. "基本保险金额与身故保险金额")
-    but misses the actual clause text that follows immediately.
+    For each evidence paragraph, includes ±N adjacent paragraphs.
+    If the paragraph starts with a subordinate marker ((一), 1., a)),
+    also pulls the preceding paragraph (the main clause).
     """
+    import re
     expanded = list(evidence)
     seen = {(e['doc_id'], e['para_id']) for e in evidence}
 
     for e in evidence:
+        text = e['text']
         doc_id = e['doc_id']
         para_id = e['para_id']
         entries = keyword_index.get(doc_id, [])
-        for offset in range(1, expand_by + 1):
+
+        # Detect subordinate clause markers: needs preceding context
+        is_subordinate = bool(re.match(r'^\s*[\(（]\s*[一二三四五六七八九十\d]+\s*[\)）]', text)
+                              or re.match(r'^\s*\d+[.\)]\s', text)
+                              or re.match(r'^\s*[a-z][.\)]\s', text, re.IGNORECASE))
+
+        offsets_to_try = []
+        if is_subordinate:
+            offsets_to_try = [-1, 1]  # Pull both preceding main clause + next
+        else:
+            offsets_to_try = [1]  # Only pull next
+
+        for offset in offsets_to_try:
+            if offset == 0:
+                continue
             target_id = para_id + offset
-            if (doc_id, target_id) in seen:
+            if target_id < 0 or (doc_id, target_id) in seen:
                 continue
             for entry in entries:
                 if entry['para_id'] == target_id:
@@ -327,10 +388,9 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
     numbers = re.findall(r'\d+', content)
     ranked_ids = [int(n) for n in numbers if int(n) < len(candidates)]
 
-    # Dynamic top-N: cross-doc/comparison questions need more evidence
-    n_docs = len({c.get("doc_id", "") for c in candidates})
+    # Dynamic top-N: more docs = more evidence needed
     max_docs = len(expected_doc_ids) if expected_doc_ids else 1
-    top_n = 12 if max_docs >= 2 else 5
+    top_n = 15 if max_docs >= 3 else (12 if max_docs >= 2 else 8)  # 1-doc:8, 2-doc:12, 3+:15
 
     top = []
     seen = set()
