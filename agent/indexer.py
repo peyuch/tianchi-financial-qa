@@ -48,6 +48,16 @@ def preprocess_and_chunk_md(text: str, doc_id: str) -> list[dict]:
     text = re.sub(r'\*\*==> picture \[\d+ x \d+\] intentionally omitted <==\*\*', '', text)
     text = re.sub(r'[•●─]', '', text)
     text = re.sub(r'-\s*\[(.*?)\]', r'- \1', text)
+    text = text.replace('<br>', '').replace('<br />', '')
+
+    # ── Extract regulatory metadata for anchor injection ──
+    doc_meta_prefix = ""
+    date_match = re.search(r'自(\d{4})年(\d{1,2})月(\d{1,2})日起施行', text)
+    if date_match:
+        doc_meta_prefix += f"【施行日期: {date_match.group(1)}年{date_match.group(2)}月{date_match.group(3)}日】"
+    title_match = re.search(r'《([^》]{5,60})》', text)
+    if title_match and len(title_match.group(1)) > 5:
+        doc_meta_prefix = f"【法规: 《{title_match.group(1)}》】" + doc_meta_prefix
 
     # ── STEP 2: State-machine chunking ──
     lines = text.split('\n')
@@ -68,7 +78,7 @@ def preprocess_and_chunk_md(text: str, doc_id: str) -> list[dict]:
         text_buffer = []
         if len(raw_md) < 5:
             return
-        path_prefix = f"【文档ID: {doc_id} | 路径: {current_section} -> {current_clause or current_statute or '正文'}】\n"
+        path_prefix = f"【文档ID: {doc_id} | {doc_meta_prefix} | 路径: {current_section} -> {current_clause or current_statute or '正文'}】\n"
         search_text = raw_md.replace('<br>', ' ').replace('<br />', ' ')
         search_text = re.sub(r'[^a-zA-Z0-9一-龥\s]', ' ', search_text)
         chunks.append({
@@ -108,7 +118,7 @@ def preprocess_and_chunk_md(text: str, doc_id: str) -> list[dict]:
         for i in range(0, len(data_lines), row_group_size):
             sub_data = data_lines[i:i + row_group_size]
             full_table_md = '\n'.join(header_lines + sub_data) if header_lines else '\n'.join(sub_data)
-            path_prefix = f"【文档ID: {doc_id} | 路径: {current_section} -> 表格数据】\n"
+            path_prefix = f"【文档ID: {doc_id} | {doc_meta_prefix} | 路径: {current_section} -> 表格数据】\n"
 
             # Semantic flattening: cross-bind year headers with metric names
             search_terms = []

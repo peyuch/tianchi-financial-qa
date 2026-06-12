@@ -450,6 +450,26 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
         "input_tokens": response["input_tokens"],
         "output_tokens": response["output_tokens"],
     }
+    # Document-balanced rebalancing: allocate equal slots per document
+    max_docs = len(expected_doc_ids) if expected_doc_ids else 1
+    if max_docs >= 2 and len(top) > max_docs:
+        per_doc = max(1, len(top) // max_docs)
+        balanced = []
+        doc_slots = {}
+        for c in top:
+            did = c.get("doc_id", "")
+            if doc_slots.get(did, 0) < per_doc:
+                doc_slots[did] = doc_slots.get(did, 0) + 1
+                balanced.append(c)
+        # Fill remaining slots with best unscored from underrepresented docs
+        for c in candidates:
+            did = c.get("doc_id", "")
+            if doc_slots.get(did, 0) < per_doc and len(balanced) < len(top):
+                doc_slots[did] = doc_slots.get(did, 0) + 1
+                balanced.append(c)
+        if len(balanced) >= max_docs * 2:
+            top = balanced
+
     return top, token_usage
 
 
