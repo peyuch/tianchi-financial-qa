@@ -479,11 +479,26 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
         if p not in _GENERIC_WORDS and p not in ('的','了','在','是','有','和','就','不','人','都','一'):
             _option_features.add(p)
 
+    # ── Numeric density filter ──
+    # Detect if any option has quantitative intent (金额, 规模, 上限, 比例, etc.)
+    _NUMERIC_INTENT_WORDS = {'金额', '规模', '上限', '下限', '比例', '价格',
+                              '利率', '费用', '低于', '超过', '占.*比例', '增速'}
+    _has_numeric_intent = any(
+        re.search(w, _opt_text) for w in _NUMERIC_INTENT_WORDS
+    )
+
     # Scan candidates for golden hints
     _golden_hints = []
     for i, c in enumerate(candidates):
+        search_field = c.get("search_text", c["text"])
         for feat in _option_features:
-            if feat in c.get("search_text", c["text"]):
+            if feat in search_field:
+                # Numeric intent gate: phrase matched but no number → skip
+                if _has_numeric_intent and not re.search(r'\d+', search_field):
+                    continue
+                # Numeric boost: phrase + number co-occurrence → ×3 score
+                if _has_numeric_intent and re.search(r'\d+', search_field):
+                    c["_score"] = c.get("_score", 0) * 3
                 _golden_hints.append(c)
                 break  # one match is enough
 
