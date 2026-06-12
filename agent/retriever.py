@@ -13,6 +13,9 @@ from agent.qwen_client import QwenClient, build_chat_message
 # Chinese stop words to filter out from keywords
 _STOP_WORDS = set("的 了 在 是 我 有 和 就 不 人 都 一 一个 上 也 很 到 说 要 去 你 会 着 没有 看 好 自己 这 他 她 它 们 那 些 什么 而 为 所 以 之 与 及 或 但 被 从 把 对 将 能 可以 可能 需要 已经 还 又 再 更 最 请 关于 根据 按照 下列 以下 以上 其中 包括 下列 各项 是否 目前 相关 进行 以及".split())
 
+# Meta-words from question boilerplate — pollute keyword extraction with "第一""第二""文档" etc.
+_META_WORDS = {'第一', '第二', '第三', '第四', '两份', '一份', '文档', '材料', '选项', '说法', '符合', '正确', '哪些', '有关', '结合', '内容'}
+
 # Minimum character length for Chinese keywords (filter out single chars like "条", "款")
 _MIN_KEYWORD_LEN = 2
 
@@ -48,11 +51,11 @@ def extract_keywords_from_question(question: str) -> list[str]:
         if term not in _STOP_WORDS:
             keywords.append(term)
 
-    # Deduplicate preserving order
+    # Deduplicate preserving order, filter meta-words
     seen = set()
     unique = []
     for kw in keywords:
-        if kw not in seen:
+        if kw not in seen and kw not in _META_WORDS and kw not in _STOP_WORDS:
             seen.add(kw)
             unique.append(kw)
     return unique
@@ -155,9 +158,27 @@ def _stage1_retrieve_single(index: dict, doc_ids: list[str], query: str) -> list
                 hits = kw_tokens & tokens
                 if not hits:
                     continue
-                # Weighted score: numeric/temporal tokens ×3, others ×1
-                score = sum(3 if (t.isdigit() or any(c in t for c in '日月年')) else 1
-                           for t in hits)
+
+                # Separate semantic vs numeric hits
+                semantic_hits = {t for t in hits if not (t.isdigit() or any(c in t for c in '日月年'))}
+                numeric_hits = hits - semantic_hits
+
+                # Numeric bonus ONLY if paragraph also has semantic keyword co-occurrence
+                base = len(semantic_hits)
+                num_bonus = len(numeric_hits) * 2 if semantic_hits else 0
+                score = base + num_bonus
+
+                # Synonym bonus: financial synonyms (金额↔规模↔额度, 评级↔级别↔等级)
+                _SYNONYM_MAP = {
+                    '金额': {'金额', '规模', '总额', '额度', '限额'},
+                    '规模': {'金额', '规模', '总额', '额度', '限额'},
+                    '评级': {'评级', '级别', '等级', '信用等级'},
+                }
+                for t in hits:
+                    if t in _SYNONYM_MAP:
+                        for syn in _SYNONYM_MAP[t]:
+                            if syn in tokens:
+                                score += 1
                 key = (doc_id, para_id)
                 if key not in seen:
                     seen.add(key)
