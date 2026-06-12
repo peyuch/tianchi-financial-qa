@@ -496,9 +496,6 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
                 # Numeric intent gate: phrase matched but no number → skip
                 if _has_numeric_intent and not re.search(r'\d+', search_field):
                     continue
-                # Numeric boost: phrase + number co-occurrence → ×3 score
-                if _has_numeric_intent and re.search(r'\d+', search_field):
-                    c["_score"] = c.get("_score", 0) * 3
                 _golden_hints.append(c)
                 break  # one match is enough
 
