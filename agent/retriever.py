@@ -131,31 +131,52 @@ def _stage1_retrieve_single(index: dict, doc_ids: list[str], query: str) -> list
         if doc_id not in index:
             continue
         doc_results = []
-        # Tokenize search_text ONCE per entry for set-intersection scoring
+        # Tokenize search_text ONCE per entry for weighted overlap scoring
+        _DOMAIN_STOP_WORDS = {'应当', '的', '在', '内', '定', '关于', '机构', '或者', '进行',
+                              '规定', '相关', '以下', '以上', '包括', '要求', '根据', '按照',
+                              '可以', '需要', '已经', '所有', '必须', '及其', '经过', '通过'}
         entry_tokens = {}
         for entry in index[doc_id]:
             haystack = entry.get("search_text", entry["text"]).lower()
             entry_tokens[entry["para_id"]] = set(jieba.lcut(haystack))
 
+        kw_token_sets = {}
         for kw in keywords:
-            kw_tokens = set(jieba.lcut(kw.lower()))
+            kw_token_sets[kw] = set(jieba.lcut(kw.lower())) - _DOMAIN_STOP_WORDS
+
+        for kw, kw_tokens in kw_token_sets.items():
+            if not kw_tokens:
+                continue
             for entry in index[doc_id]:
                 para_id = entry["para_id"]
                 tokens = entry_tokens.get(para_id, set())
                 if not tokens:
                     continue
-                # Token set intersection: at least one keyword token must match
-                if kw_tokens & tokens:
-                    key = (doc_id, para_id)
-                    if key not in seen:
-                        seen.add(key)
-                        doc_results.append({
-                            "doc_id": doc_id,
-                            "para_id": para_id,
-                            "text": entry["text"],
-                        })
-            if len(doc_results) >= per_doc_quota * 3:
-                break
+                hits = kw_tokens & tokens
+                if not hits:
+                    continue
+                # Weighted score: numeric/temporal tokens ×3, others ×1
+                score = sum(3 if (t.isdigit() or any(c in t for c in '日月年')) else 1
+                           for t in hits)
+                key = (doc_id, para_id)
+                if key not in seen:
+                    seen.add(key)
+                    doc_results.append({
+                        "doc_id": doc_id,
+                        "para_id": para_id,
+                        "text": entry["text"],
+                        "_score": score,
+                    })
+                else:
+                    # Update max score for the same paragraph
+                    for dr in doc_results:
+                        if dr["doc_id"] == doc_id and dr["para_id"] == para_id:
+                            dr["_score"] = max(dr.get("_score", 0), score)
+                            break
+            # Sort by accumulated score before truncation
+            doc_results.sort(key=lambda r: r.get("_score", 0), reverse=True)
+            if len(doc_results) > per_doc_quota * 3:
+                doc_results = doc_results[:per_doc_quota * 3]
         doc_results_list.append(doc_results)
 
     # Score and re-rank: prefer paragraphs matching multiple target metrics
@@ -315,9 +336,10 @@ def expand_evidence(evidence: list[dict], keyword_index: dict,
         entries = keyword_index.get(doc_id, [])
 
         # Detect subordinate clause markers: needs preceding context
+        # \s* after the marker, not \s — "1.应当" has no space after "1."
         is_subordinate = bool(re.match(r'^\s*[\(（]\s*[一二三四五六七八九十\d]+\s*[\)）]', text)
-                              or re.match(r'^\s*\d+[.\)]\s', text)
-                              or re.match(r'^\s*[a-z][.\)]\s', text, re.IGNORECASE))
+                              or re.match(r'^\s*\d+[.)]', text)
+                              or re.match(r'^\s*[a-z][.)]', text, re.IGNORECASE))
 
         offsets_to_try = []
         if is_subordinate:
