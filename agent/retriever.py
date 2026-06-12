@@ -493,9 +493,10 @@ def stage2_filter(client: QwenClient, candidates: list[dict],
         search_field = c.get("search_text", c["text"])
         for feat in _option_features:
             if feat in search_field:
-                # Numeric intent gate: phrase matched but no number → skip
-                if _has_numeric_intent and not re.search(r'\d+', search_field):
-                    continue
+                # Per-feature numeric gate: only require numbers if THIS feature is numeric
+                feat_is_numeric = any(re.search(w, feat) for w in _NUMERIC_INTENT_WORDS)
+                if feat_is_numeric and not re.search(r'\d+', search_field):
+                    continue  # e.g. "金额" matched but paragraph has no numbers → skip
                 _golden_hints.append(c)
                 break  # one match is enough
 
